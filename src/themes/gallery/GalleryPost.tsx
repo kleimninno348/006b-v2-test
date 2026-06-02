@@ -5,6 +5,7 @@ import { PartialPost, Post } from '@/src/types/blog'
 import { BlockResponse } from '@/src/types/notion'
 import Link from 'next/link'
 import { GalleryBreadcrumb } from './GalleryBreadcrumb'
+import { GalleryPostDownloadButton } from './GalleryPostDownloadButton'
 import {
   galleryCardTagClass,
   galleryInlineLinkClass,
@@ -22,6 +23,7 @@ type GalleryPostProps = {
 export const GalleryPost = ({ post, blocks, navigation }: GalleryPostProps) => {
   const cover = post.cover?.light?.src
   const { previousPost, nextPost } = navigation
+  const downloadValue = post.options?.download?.trim() ?? ''
 
   return (
     <>
@@ -30,6 +32,12 @@ export const GalleryPost = ({ post, blocks, navigation }: GalleryPostProps) => {
           { label: '首页', href: '/' },
           { label: post.title },
         ]}
+        trailing={
+          <GalleryPostDownloadButton
+            postTitle={post.title}
+            downloadContent={downloadValue}
+          />
+        }
       />
       <main className="flex-1 bg-white px-6 py-6">
       <article className="mx-auto max-w-3xl">

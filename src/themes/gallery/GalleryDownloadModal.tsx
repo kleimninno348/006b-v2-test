@@ -119,9 +119,9 @@ export const GalleryDownloadModal = ({
         <div className="px-5 py-5">
           {isEmpty ? (
             <p className="text-center text-[14px] leading-relaxed text-neutral-500">
-              该内容暂未配置下载信息。
+              该内容暂未添加下载信息。
               <br />
-              请稍后再试或联系站长。
+              请联系站长。
             </p>
           ) : (
             <div className="space-y-3">

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ReactNode } from 'react'
 import { galleryInlineLinkClass } from './galleryFonts'
 
 export type BreadcrumbItem = {
@@ -6,12 +7,19 @@ export type BreadcrumbItem = {
   href?: string
 }
 
-export const GalleryBreadcrumb = ({ items }: { items: BreadcrumbItem[] }) => {
+type GalleryBreadcrumbProps = {
+  items: BreadcrumbItem[]
+  /** 右上角操作区，如文章页「作品下载」 */
+  trailing?: ReactNode
+}
+
+export const GalleryBreadcrumb = ({ items, trailing }: GalleryBreadcrumbProps) => {
   if (!items.length) return null
 
   return (
+    <div className="font-gallery flex items-center justify-between gap-4 px-6 pt-5 antialiased">
     <nav
-      className="font-gallery flex flex-wrap items-center gap-1.5 px-6 pt-5 text-[15px] leading-none antialiased"
+      className="flex min-w-0 flex-wrap items-center gap-1.5 text-[15px] leading-none"
       aria-label="面包屑"
     >
       {items.map((item, index) => {
@@ -37,5 +45,7 @@ export const GalleryBreadcrumb = ({ items }: { items: BreadcrumbItem[] }) => {
         )
       })}
     </nav>
+    {trailing ? <div className="shrink-0">{trailing}</div> : null}
+    </div>
   )
 }

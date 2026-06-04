@@ -8,11 +8,11 @@ import { sortPostsByPinnedThenDate } from './pinnedPosts'
  * 新主题请只消费 props.posts，勿在主题内再次全量拉取 Notion。
  */
 export const BLOG_HOME_POSTS_MAX =
-  (CONFIG as { HOME_BUILD_POSTS_MAX?: number }).HOME_BUILD_POSTS_MAX ?? 80
+  (CONFIG as { HOME_BUILD_POSTS_MAX?: number }).HOME_BUILD_POSTS_MAX ?? 120
 
 /** 预渲染文章路径上限（其余走 fallback: blocking） */
 export const BLOG_STATIC_POST_PATHS_MAX =
-  (CONFIG as { STATIC_POST_PATHS_MAX?: number }).STATIC_POST_PATHS_MAX ?? 80
+  (CONFIG as { STATIC_POST_PATHS_MAX?: number }).STATIC_POST_PATHS_MAX ?? 120
 
 export function capHomePosts(posts: Post[]): Post[] {
   const sorted = sortPostsByPinnedThenDate(posts)

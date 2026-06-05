@@ -43,6 +43,7 @@ const Icons = {
   CoverMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>,
   TextMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>,
   GridMode: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>,
+  Calendar: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>,
   Tutorial: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
 };
 
@@ -190,6 +191,127 @@ const SlidingNav = ({ activeIdx, onSelect }) => {
     <div className="nav-container">
       <div className="nav-glider" style={{ left: `${activeIdx * 45 + 5}px`, width: '40px' }} />
       {icons.map((Icon, i) => (<div key={i} className={`nav-item ${activeIdx === i ? 'active' : ''}`} onClick={() => onSelect(i)}><Icon /></div>))}
+    </div>
+  );
+};
+
+function toDateKey(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+const CAL_WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+
+const AdminPublishCalendar = ({ month, publishedDates, selectedDate, onMonthChange, onSelectDate }) => {
+  const year = month.getFullYear();
+  const mon = month.getMonth();
+  const firstDow = new Date(year, mon, 1).getDay();
+  const daysInMonth = new Date(year, mon + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const monthLabel = `${year}年${mon + 1}月`;
+
+  return (
+    <div
+      className="admin-date-calendar"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute',
+        top: 'calc(100% + 10px)',
+        right: 0,
+        width: '280px',
+        background: '#2a2a2e',
+        border: '1px solid #555',
+        borderRadius: '14px',
+        padding: '14px',
+        zIndex: 60,
+        boxShadow: '0 16px 40px rgba(0,0,0,0.55)',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
+        <button
+          type="button"
+          onClick={() => onMonthChange(new Date(year, mon - 1, 1))}
+          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '18px', padding: '4px 8px' }}
+        >
+          ‹
+        </button>
+        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff' }}>{monthLabel}</span>
+        <button
+          type="button"
+          onClick={() => onMonthChange(new Date(year, mon + 1, 1))}
+          style={{ background: 'none', border: 'none', color: '#aaa', cursor: 'pointer', fontSize: '18px', padding: '4px 8px' }}
+        >
+          ›
+        </button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '6px' }}>
+        {CAL_WEEKDAYS.map((w) => (
+          <div key={w} style={{ textAlign: 'center', fontSize: '11px', color: '#777', padding: '4px 0' }}>{w}</div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+        {cells.map((day, idx) => {
+          if (day == null) return <div key={`e-${idx}`} />;
+          const key = `${year}-${String(mon + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          const hasPosts = publishedDates.has(key);
+          const isSelected = selectedDate === key;
+          const clickable = hasPosts;
+          return (
+            <button
+              key={key}
+              type="button"
+              disabled={!clickable}
+              onClick={() => clickable && onSelectDate(key)}
+              style={{
+                aspectRatio: '1',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: isSelected ? 'bold' : 'normal',
+                cursor: clickable ? 'pointer' : 'default',
+                background: isSelected ? 'greenyellow' : clickable ? 'rgba(173,255,47,0.12)' : 'transparent',
+                color: isSelected ? '#000' : clickable ? '#eee' : '#555',
+                opacity: clickable ? 1 : 0.45,
+              }}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+      {selectedDate ? (
+        <button
+          type="button"
+          onClick={() => onSelectDate(null)}
+          style={{
+            marginTop: '12px',
+            width: '100%',
+            padding: '8px',
+            borderRadius: '8px',
+            border: '1px solid #555',
+            background: 'transparent',
+            color: '#aaa',
+            fontSize: '12px',
+            cursor: 'pointer',
+          }}
+        >
+          清除日期筛选
+        </button>
+      ) : (
+        <p style={{ margin: '10px 0 0', fontSize: '11px', color: '#666', textAlign: 'center', lineHeight: 1.5 }}>
+          高亮日期为已发布文章，点击筛选
+        </p>
+      )}
     </div>
   );
 };
@@ -827,6 +949,11 @@ const [mounted, setMounted] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
+  const [catDraft, setCatDraft] = useState('');
+  const [showCatInput, setShowCatInput] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [selectedPublishDate, setSelectedPublishDate] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [friends, setFriends] = useState([]);
   const [friendsLoading, setFriendsLoading] = useState(false);
   const [galleryAd, setGalleryAd] = useState({ id: null, url: '', promoText: '', cover: '' });
@@ -1488,14 +1615,50 @@ const [mounted, setMounted] = useState(false);
 
      if (searchQuery) list = list.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
      if (selectedFolder) list = list.filter(p => p.category === selectedFolder);
+     if (selectedPublishDate && activeTab === 'Post') {
+       list = list.filter(p => toDateKey(p.date) === selectedPublishDate);
+     }
      return list;
   };
   const filtered = getFilteredPosts();
   const pinnedDividerIndex = activeTab === 'Post' ? filtered.findIndex(p => !p.pinned) : -1;
+  const publishDatesSet = (() => {
+    const s = new Set();
+    posts
+      .filter(p => p.type === 'Post' && p.status !== 'Draft' && p.slug !== ANNOUNCEMENT_SLUG)
+      .forEach(p => {
+        const k = toDateKey(p.date);
+        if (k) s.add(k);
+      });
+    return s;
+  })();
   const displayTags = (options.tags && options.tags.length > 0) ? (showAllTags ? options.tags : options.tags.slice(0, 12)) : [];
   const selectedTags = (form.tags || '').split(',').map(t => t.trim()).filter(Boolean);
   const addTag = (name) => { const n = (name || '').trim(); if (!n || selectedTags.includes(n)) return; setForm({ ...form, tags: [...selectedTags, n].join(',') }); };
   const removeTag = (name) => { setForm({ ...form, tags: selectedTags.filter(t => t !== name).join(',') }); };
+  const setCategory = (name) => {
+    const n = (name || '').trim();
+    if (!n) return;
+    setForm({ ...form, category: n });
+    setOptions(o => ({
+      ...o,
+      categories: o.categories.includes(n) ? o.categories : [...o.categories, n].sort((a, b) => a.localeCompare(b, 'zh-CN')),
+    }));
+  };
+  const addCategoryFromDraft = () => {
+    const n = catDraft.trim();
+    if (n) setCategory(n);
+    setCatDraft('');
+    setShowCatInput(false);
+  };
+  const handlePublishDateSelect = (key) => {
+    if (key == null) {
+      setSelectedPublishDate(null);
+      return;
+    }
+    setSelectedPublishDate(prev => (prev === key ? null : key));
+    setDatePickerOpen(false);
+  };
 
   if (!mounted) return null;
 
@@ -1548,7 +1711,7 @@ const [mounted, setMounted] = useState(false);
                   {['Post', 'Widget', 'Page'].map(t => (
                     <button
                       key={t}
-                      onClick={() => { setActiveTab(t); setSelectedFolder(null); }}
+                      onClick={() => { setActiveTab(t); setSelectedFolder(null); setSelectedPublishDate(null); setDatePickerOpen(false); }}
                       style={activeTab === t ? { padding: '8px 20px', border: 'none', background: '#555', color: '#fff', borderRadius: '10px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' } : { padding: '8px 20px', border: 'none', background: 'none', color: '#888', borderRadius: '10px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
                     >
                       {t === 'Page' ? '自定义页面' : t === 'Post' ? '已发布' : '组件'}
@@ -1598,8 +1761,59 @@ const [mounted, setMounted] = useState(false);
                 </div>
               </div>
 
-              {/* 3. 右侧滑动导航 */}
-              <SlidingNav activeIdx={navIdx} onSelect={handleNavClick} />
+              {/* 3. 右侧视图栏 + 发布日期筛选 */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
+                <SlidingNav activeIdx={navIdx} onSelect={handleNavClick} />
+                {activeTab === 'Post' && (
+                  <>
+                    <button
+                      type="button"
+                      title={selectedPublishDate ? `筛选：${selectedPublishDate}` : '按发布日期筛选'}
+                      onClick={() => {
+                        setDatePickerOpen((o) => {
+                          if (!o && selectedPublishDate) {
+                            const parts = selectedPublishDate.split('-').map(Number);
+                            if (parts.length === 3) setCalendarMonth(new Date(parts[0], parts[1] - 1, 1));
+                          } else if (!o) {
+                            setCalendarMonth(new Date());
+                          }
+                          return !o;
+                        });
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '50%',
+                        border: selectedPublishDate ? '1px solid greenyellow' : '1px solid #444',
+                        background: selectedPublishDate ? 'rgba(173,255,47,0.12)' : '#202024',
+                        color: selectedPublishDate ? 'greenyellow' : '#aaa',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Icons.Calendar />
+                    </button>
+                    {datePickerOpen && (
+                      <>
+                        <div
+                          onClick={() => setDatePickerOpen(false)}
+                          style={{ position: 'fixed', inset: 0, zIndex: 50 }}
+                        />
+                        <AdminPublishCalendar
+                          month={calendarMonth}
+                          publishedDates={publishDatesSet}
+                          selectedDate={selectedPublishDate}
+                          onMonthChange={setCalendarMonth}
+                          onSelectDate={handlePublishDateSelect}
+                        />
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
             {/* 4. 列表渲染区域 */}
@@ -1832,8 +2046,49 @@ const [mounted, setMounted] = useState(false);
                <div style={{marginTop:'16px', fontSize:'12px', color:'#999', background:'#202024', borderRadius:'8px', padding:'12px 14px', lineHeight:1.7, border:'1px solid #333'}}>🖼️ <b style={{color:'greenyellow'}}>封面说明</b>：保存后系统会把<b style={{color:'#fff'}}>第一个图片块</b>的图床链接写入 Notion <b style={{color:'#fff'}}>cover</b> 并在内页嵌入；列表卡片也用该图。大图库请在 Step 4 批量添加（本地预览，保存后上传）。</div>
             </StepAccordion>
             <StepAccordion step={2} title="分类与时间" isOpen={expandedStep === 2} onToggle={()=>setExpandedStep(expandedStep===2?0:2)}>
-               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px'}}>
-                 <div><label style={{display:'block', fontSize:'11px', color:'#bbb', marginBottom:'5px'}}>分类 <span style={{color: '#ff4d4f'}}>*</span></label><input className="glow-input" list="cats" value={form.category} onChange={e=>setForm({...form, category:e.target.value})} placeholder="选择或输入分类" /><datalist id="cats">{options.categories.map(o=><option key={o} value={o}/>)}</datalist></div>
+               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', alignItems:'start'}}>
+                 <div>
+                   <label style={{display:'block', fontSize:'11px', color:'#bbb', marginBottom:'5px'}}>分类 <span style={{color: '#ff4d4f'}}>*</span></label>
+                   <div style={{display:'flex', flexWrap:'wrap', gap:'8px', alignItems:'center', marginBottom:'12px'}}>
+                     {form.category ? (
+                       <span style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#333', padding:'6px 10px', borderRadius:'6px', fontSize:'13px', color:'#fff', border:'1px solid greenyellow'}}>
+                         {form.category}
+                         <span onClick={()=>setForm({...form, category:''})} style={{cursor:'pointer', color:'#ff7875', fontWeight:'bold'}}>×</span>
+                       </span>
+                     ) : null}
+                     {showCatInput ? (
+                       <input autoFocus className="glow-input" style={{width:'150px', padding:'6px 10px'}} value={catDraft}
+                         onChange={e=>setCatDraft(e.target.value)}
+                         onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); addCategoryFromDraft(); } else if(e.key==='Escape'){ setShowCatInput(false); setCatDraft(''); } }}
+                         onBlur={()=>{ if(catDraft.trim()) addCategoryFromDraft(); else { setShowCatInput(false); setCatDraft(''); } }}
+                         placeholder="输入分类名后回车" />
+                     ) : (
+                       <span onClick={()=>setShowCatInput(true)} style={{cursor:'pointer', border:'1px dashed #666', color:'greenyellow', padding:'6px 12px', borderRadius:'6px', fontSize:'13px'}}>＋ 创建分类</span>
+                     )}
+                   </div>
+                   {options.categories.length > 0 && (
+                     <div>
+                       <div style={{fontSize:'11px', color:'#777', marginBottom:'6px'}}>点击已有分类选择或替换：</div>
+                       <div style={{display:'flex', flexWrap:'wrap', gap:'6px'}}>
+                         {options.categories.map(cat => (
+                           <span
+                             key={cat}
+                             onClick={()=>setCategory(cat)}
+                             style={{
+                               cursor:'pointer',
+                               background: form.category === cat ? 'rgba(173,255,47,0.15)' : '#2a2a2e',
+                               border: form.category === cat ? '1px solid greenyellow' : '1px solid #444',
+                               color: form.category === cat ? 'greenyellow' : '#bbb',
+                               padding:'4px 10px',
+                               borderRadius:'6px',
+                               fontSize:'12px',
+                             }}
+                           >{cat}</span>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+                 </div>
                  <div><label style={{display:'block', fontSize:'11px', color:'#bbb', marginBottom:'5px'}}>发布日期 <span style={{color: '#ff4d4f'}}>*</span></label><input className="glow-input" type="date" value={form.date} onChange={e=>setForm({...form, date:e.target.value})} /></div>
                </div>
             </StepAccordion>

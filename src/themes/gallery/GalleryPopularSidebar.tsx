@@ -4,17 +4,15 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { GalleryRecommendPost } from '@/src/lib/gallery/galleryRecommendations'
 
-const COVER_ASPECT = 'aspect-[5/2]'
+/** Epic 侧边栏：左侧横版缩略图 + 右侧标题/日期 */
+const THUMB_CLASS = 'w-[96px] shrink-0 overflow-hidden rounded-[4px] bg-neutral-100'
+const COVER_ASPECT = 'aspect-[4/3]'
 
-function formatPostDate(iso: string) {
+function formatEpicDate(iso: string) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-  })
+  return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
 }
 
 type GalleryPopularSidebarProps = {
@@ -57,42 +55,44 @@ export function GalleryPopularSidebar({
 
   return (
     <aside
-      className={`w-[280px] shrink-0 border-neutral-200 lg:border-l lg:pl-8 ${className}`.trim()}
+      className={`w-[248px] shrink-0 border-neutral-200 lg:border-l lg:pl-7 ${className}`.trim()}
     >
-      <h2 className="mb-5 font-gallery text-[14px] font-normal tracking-wide text-neutral-400">
+      <h2 className="mb-4 font-gallery text-[13px] font-normal tracking-wide text-neutral-400">
         热门推荐
       </h2>
-      <ul className="flex flex-col gap-6">
+      <ul className="flex flex-col gap-5">
         {posts.map((item) => (
           <li key={item.slug}>
             <Link
               href={`/post/${item.slug}`}
-              className="group block"
+              className="group flex items-center gap-3"
             >
-              <div className="overflow-hidden rounded-md bg-neutral-100">
+              <div className={THUMB_CLASS}>
                 <div className={`relative ${COVER_ASPECT}`}>
                   {item.coverSrc ? (
                     <img
                       src={item.coverSrc}
                       alt=""
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+                      className="h-full w-full object-cover object-[center_20%] transition-transform duration-300 group-hover:scale-[1.05]"
                       loading="lazy"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-lg font-semibold text-neutral-300">
+                    <div className="flex h-full w-full items-center justify-center text-base font-semibold text-neutral-300">
                       P
                     </div>
                   )}
                 </div>
               </div>
-              <p className="mt-2.5 line-clamp-2 font-gallery text-[13px] font-normal leading-[1.45] tracking-[0.01em] text-neutral-900 transition-colors group-hover:text-neutral-500">
-                {item.title}
-              </p>
-              {item.date ? (
-                <p className="mt-1.5 font-gallery text-[12px] text-neutral-400">
-                  {formatPostDate(item.date)}
+              <div className="min-w-0 flex-1">
+                <p className="line-clamp-2 font-gallery text-[13px] font-normal leading-[1.35] text-neutral-900 transition-colors group-hover:text-neutral-500">
+                  {item.title}
                 </p>
-              ) : null}
+                {item.date ? (
+                  <p className="mt-1 font-gallery text-[12px] text-neutral-400">
+                    {formatEpicDate(item.date)}
+                  </p>
+                ) : null}
+              </div>
             </Link>
           </li>
         ))}

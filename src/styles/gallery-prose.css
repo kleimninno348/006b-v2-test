@@ -355,21 +355,6 @@ html.dark .prose-gallery .cursor-pointer {
   color: #171717 !important;
 }
 
-/* Gallery 内页全量加载转圈（真实 DOM，避免伪元素动画失效） */
-@keyframes gallery-loader-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.gallery-loader-orbit__ring {
-  animation: gallery-loader-spin 0.88s cubic-bezier(0.5, 0.1, 0.3, 0.9) infinite;
-}
-
-.gallery-loader-orbit__ring-inner {
-  animation: gallery-loader-spin 1.25s cubic-bezier(0.5, 0.1, 0.3, 0.9) infinite reverse;
-}
-
 /* Gallery 图库骨架屏与入场过渡 */
 @keyframes gallery-shimmer {
   0% {
@@ -512,9 +497,7 @@ html.dark .prose-gallery .cursor-pointer {
   .gallery-grid-enter-item,
   .gallery-grid-load-more-item,
   .gallery-load-more-skeleton,
-  .gallery-grid-image-shimmer,
-  .gallery-loader-orbit__ring,
-  .gallery-loader-orbit__ring-inner {
+  .gallery-grid-image-shimmer {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { preloadGalleryImages } from '@/src/lib/gallery/preloadGalleryImages'
 import { GALLERY_POST_PAGE_SIZE } from './galleryConstants'
 import { GalleryGridImage } from './GalleryGridImage'
 import { GalleryGridLoader } from './GalleryGridLoader'
@@ -27,6 +28,12 @@ type GalleryImageGridProps = {
   pageSize?: number
 }
 
+type GalleryPageResult = {
+  list: GalleryApiImage[]
+  total: number
+  hasMore: boolean
+}
+
 export function GalleryImageGrid({
   postSlug,
   pageSize = GALLERY_POST_PAGE_SIZE,
@@ -44,8 +51,8 @@ export function GalleryImageGrid({
   const [appendFrom, setAppendFrom] = useState(0)
   const gridRef = useRef<HTMLDivElement>(null)
 
-  const fetchPage = useCallback(
-    async (pageNum: number, append: boolean) => {
+  const fetchGalleryPage = useCallback(
+    async (pageNum: number): Promise<GalleryPageResult> => {
       const res = await fetch(
         `/api/gallery/${encodeURIComponent(postSlug)}?page=${pageNum}&limit=${pageSize}`
       )
@@ -54,10 +61,11 @@ export function GalleryImageGrid({
         throw new Error(data.error || '加载图库失败')
       }
       const list = data.images || []
-      setTotal(data.total || 0)
-      setHasMore(!!data.hasMore)
-      setActive(list.length > 0 || (data.total || 0) > 0)
-      setImages((prev) => (append ? [...prev, ...list] : list))
+      return {
+        list,
+        total: data.total || 0,
+        hasMore: !!data.hasMore,
+      }
     },
     [postSlug, pageSize]
   )
@@ -70,10 +78,18 @@ export function GalleryImageGrid({
     setPage(1)
     setAppendFrom(0)
     setLightboxIndex(null)
-    fetchPage(1, false)
+
+    fetchGalleryPage(1)
+      .then(({ list, total: count, hasMore: more }) => {
+        if (cancelled) return
+        setTotal(count)
+        setHasMore(more)
+        setActive(list.length > 0 || count > 0)
+        setImages(list)
+      })
       .catch((e) => {
         if (!cancelled) {
-          setError(e.message)
+          setError(e instanceof Error ? e.message : '加载失败')
           setActive(false)
           setImages([])
         }
@@ -81,10 +97,11 @@ export function GalleryImageGrid({
       .finally(() => {
         if (!cancelled) setLoading(false)
       })
+
     return () => {
       cancelled = true
     }
-  }, [fetchPage])
+  }, [fetchGalleryPage])
 
   useEffect(() => {
     if (loading) {
@@ -99,11 +116,22 @@ export function GalleryImageGrid({
     if (!hasMore || loadingMore) return
     const next = page + 1
     const baseline = images.length
-    setAppendFrom(baseline)
     setLoadingMore(true)
+    setError('')
+
     try {
-      await fetchPage(next, true)
+      const { list, total: count, hasMore: more } =
+        await fetchGalleryPage(next)
+
+      const sources = list.map((img) => img.thumb_url || img.url)
+      await preloadGalleryImages(sources)
+
+      setImages((prev) => [...prev, ...list])
+      setAppendFrom(baseline)
+      setTotal(count)
+      setHasMore(more)
       setPage(next)
+
       requestAnimationFrame(() => {
         const firstNew = gridRef.current?.querySelector(
           `[data-gallery-index="${baseline}"]`
@@ -155,23 +183,14 @@ export function GalleryImageGrid({
             onOpen={() => setLightboxIndex(index)}
           />
         ))}
-
-        {loadingMore
-          ? Array.from({ length: Math.min(pageSize, 4) }).map((_, i) => (
-              <div
-                key={`more-skel-${i}`}
-                className="gallery-load-more-skeleton aspect-[3/4] w-full rounded-lg"
-                style={{ animationDelay: `${i * 70}ms` }}
-                aria-hidden
-              />
-            ))
-          : null}
       </div>
+
+      {loadingMore ? <GalleryGridLoader compact /> : null}
 
       {hasMore ? (
         <div
           className={`mt-10 flex justify-center transition-opacity duration-300 ${
-            loadingMore ? 'pointer-events-none opacity-70' : 'opacity-100'
+            loadingMore ? 'pointer-events-none opacity-50' : 'opacity-100'
           }`}
         >
           <button

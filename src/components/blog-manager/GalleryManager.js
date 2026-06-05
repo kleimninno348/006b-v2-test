@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { uploadImageToLsky } from '@/src/lib/admin/lskyClientUpload'
+import {
+  mapWithConcurrency,
+  uploadGalleryImageToLsky,
+} from '@/src/lib/admin/lskyClientUpload'
+
+const UPLOAD_CONCURRENCY = 4
 
 const btnSpinStyle = {
   width: '14px',
@@ -18,6 +23,7 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 })
   const [saving, setSaving] = useState(false)
   const [saveDone, setSaveDone] = useState(false)
   const [error, setError] = useState('')
@@ -45,6 +51,44 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
     loadGallery()
   }, [loadGallery])
 
+  const persistGallery = async (nextItems) => {
+    const res = await fetch('/api/admin/gallery', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        postSlug: slug,
+        postNotionId: postNotionId || null,
+        title: postTitle || null,
+        images: nextItems.map((it) => ({ url: it.url })),
+      }),
+    })
+    const d = await res.json()
+    if (!d.success) throw new Error(d.error || '保存失败')
+    return d
+  }
+
+  const saveGallery = async (itemsOverride) => {
+    if (!slug) {
+      alert('请先保存文章（生成 slug）后再保存图库')
+      return
+    }
+    const payload = itemsOverride ?? items
+    setSaving(true)
+    setSaveDone(false)
+    setError('')
+    try {
+      await persistGallery(payload)
+      setSaveDone(true)
+      setTimeout(() => setSaveDone(false), 2500)
+      await loadGallery()
+    } catch (e) {
+      setError(e.message)
+      alert('图库保存失败：' + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList || []).filter((f) =>
       /^image\//i.test(f.type)
@@ -55,20 +99,36 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
       return
     }
     setUploading(true)
+    setUploadProgress({ done: 0, total: files.length })
     setError('')
     try {
-      const urls = []
-      for (const file of files) {
-        urls.push(await uploadImageToLsky(file))
-      }
-      setItems((prev) => [
-        ...prev,
+      let done = 0
+      const urls = await mapWithConcurrency(
+        files,
+        UPLOAD_CONCURRENCY,
+        async (file) => {
+          const url = await uploadGalleryImageToLsky(file)
+          done += 1
+          setUploadProgress({ done, total: files.length })
+          return url
+        }
+      )
+
+      const nextItems = [
+        ...items,
         ...urls.map((url) => ({ id: `local-${url}`, url })),
-      ])
+      ]
+      setItems(nextItems)
+      await persistGallery(nextItems)
+      setSaveDone(true)
+      setTimeout(() => setSaveDone(false), 2500)
+      await loadGallery()
     } catch (e) {
       setError(e.message)
+      alert('图库上传失败：' + e.message)
     } finally {
       setUploading(false)
+      setUploadProgress({ done: 0, total: 0 })
     }
   }
 
@@ -84,38 +144,6 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
       ;[next[index], next[target]] = [next[target], next[index]]
       return next
     })
-  }
-
-  const saveGallery = async () => {
-    if (!slug) {
-      alert('请先保存文章（生成 slug）后再保存图库')
-      return
-    }
-    setSaving(true)
-    setSaveDone(false)
-    setError('')
-    try {
-      const res = await fetch('/api/admin/gallery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          postSlug: slug,
-          postNotionId: postNotionId || null,
-          title: postTitle || null,
-          images: items.map((it) => ({ url: it.url })),
-        }),
-      })
-      const d = await res.json()
-      if (!d.success) throw new Error(d.error || '保存失败')
-      setSaveDone(true)
-      setTimeout(() => setSaveDone(false), 2500)
-      await loadGallery()
-    } catch (e) {
-      setError(e.message)
-      alert('图库保存失败：' + e.message)
-    } finally {
-      setSaving(false)
-    }
   }
 
   if (!slug) {
@@ -138,9 +166,10 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
   return (
     <div>
       <p style={{ fontSize: '12px', color: '#888', margin: '0 0 12px', lineHeight: 1.7 }}>
-        图片上传到<b style={{ color: '#ccc' }}>兰空图床</b>，清单保存在
-        <b style={{ color: '#ccc' }}> Supabase</b>。前台 Gallery 内页将分页展示，不占用
-        Notion 正文块。作品标识：<code style={{ color: 'greenyellow' }}>{slug}</code>
+        图片上传到<b style={{ color: '#ccc' }}>兰空图床</b>（上传前自动压缩，节约空间），清单保存在
+        <b style={{ color: '#ccc' }}> Supabase</b>，上传完成后<b style={{ color: '#ccc' }}>自动保存</b>。前台
+        Gallery 内页分页展示。作品标识：
+        <code style={{ color: 'greenyellow' }}>{slug}</code>
       </p>
 
       <label
@@ -169,7 +198,9 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
         {uploading ? (
           <div className="img-uploading">
             <div className="img-spin" />
-            <div>批量上传中…</div>
+            <div>
+              压缩并上传中… {uploadProgress.done}/{uploadProgress.total}
+            </div>
           </div>
         ) : (
           <div style={{ pointerEvents: 'none', textAlign: 'center' }}>
@@ -177,7 +208,7 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
               拖拽或点击 · 批量上传图库
             </div>
             <div style={{ fontSize: '12px', color: '#777' }}>
-              支持多选；上传后请点「保存图库」写入数据库
+              支持多选 · 自动压缩 · 上传后自动写入数据库
             </div>
           </div>
         )}
@@ -308,7 +339,7 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
 
       <button
         type="button"
-        onClick={saveGallery}
+        onClick={() => saveGallery()}
         disabled={saving || uploading}
         style={{
           width: '100%',
@@ -334,7 +365,7 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
         ) : saveDone ? (
           '✓ 图库已保存'
         ) : (
-          `保存图库（${items.length} 张）`
+          `手动保存排序（${items.length} 张）`
         )}
       </button>
     </div>

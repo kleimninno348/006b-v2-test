@@ -41,16 +41,20 @@ export const GalleryPost = ({
           },
           { label: post.title },
         ]}
-        trailing={
-          <GalleryPostDownloadButton
-            postTitle={post.title}
-            downloadContent={downloadValue}
-          />
-        }
       />
       <main className="flex flex-1 flex-col bg-white px-6 py-6 pb-8 lg:px-10">
         <article className="mx-auto w-full max-w-[1120px]">
-          <h1 className={`mb-3 ${galleryPostTitleClass}`}>{post.title}</h1>
+          <div className="mb-3 flex items-start justify-between gap-6">
+            <h1 className={`min-w-0 flex-1 ${galleryPostTitleClass}`}>
+              {post.title}
+            </h1>
+            <div className="shrink-0 pt-0.5">
+              <GalleryPostDownloadButton
+                postTitle={post.title}
+                downloadContent={downloadValue}
+              />
+            </div>
+          </div>
 
           {post.tags && post.tags.length > 0 ? (
             <p className={`mb-6 ${galleryCardTagClass}`}>

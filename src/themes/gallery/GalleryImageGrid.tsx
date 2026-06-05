@@ -163,9 +163,6 @@ export function GalleryImageGrid({
     <div
       className={`gallery-grid-panel mb-10 ${contentReady ? 'gallery-grid-panel--ready' : ''}`}
     >
-      <p className="mb-5 font-gallery text-[14px] text-neutral-500">
-        共 {total} 张
-      </p>
       {error ? (
         <p className="mb-4 text-center text-sm text-red-500">{error}</p>
       ) : null}

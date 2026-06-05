@@ -102,19 +102,27 @@ async function waitForUploadSlot() {
 
 function enqueueLskyUpload(task) {
 
-  const run = uploadChain.then(async () => {
+  const next = uploadChain.then(async () => {
 
     await waitForUploadSlot()
 
-    try {
+    const runTask = async () => {
 
       const result = await task()
+
+      if (!result) throw new Error('图床未返回图片地址')
 
       uploadTimestamps.push(Date.now())
 
       pruneUploadTimestamps()
 
       return result
+
+    }
+
+    try {
+
+      return await runTask()
 
     } catch (e) {
 
@@ -124,13 +132,7 @@ function enqueueLskyUpload(task) {
 
         await sleep(LSKY_RATE_WINDOW_MS + 500)
 
-        const result = await task()
-
-        uploadTimestamps.push(Date.now())
-
-        pruneUploadTimestamps()
-
-        return result
+        return runTask()
 
       }
 
@@ -140,9 +142,9 @@ function enqueueLskyUpload(task) {
 
   })
 
-  uploadChain = run.catch(() => {})
+  uploadChain = next.catch(() => {})
 
-  return run
+  return next
 
 }
 
@@ -435,6 +437,10 @@ async function uploadViaProxy(file) {
   const { json } = await readResponseBody(res)
 
   if (!json.success) throw new Error(json.error || '上传失败')
+
+  if (!json.url || !/^https?:\/\//i.test(json.url)) {
+    throw new Error('图床未返回有效图片地址')
+  }
 
   return json.url
 

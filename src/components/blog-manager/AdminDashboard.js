@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head'; // 🟢 引入 Head 组件控制浏览器标签
 import { GalleryManager } from './GalleryManager';
 import {
@@ -13,6 +13,7 @@ import {
   countPendingEditorMedia,
   flushEditorBlocksMedia,
   isLockImagePending,
+  isImageBlockPending,
   revokeBlockPendingMedia,
   revokePendingEditorMedia,
   blocksToMarkdown,
@@ -580,7 +581,7 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
                       {/\.(mp4|mov|webm|ogg|mkv)(\?|$)/i.test(b.content)
                         ? <video src={b.content} controls className="img-preview" />
                         : <img src={b.content} className="img-preview" alt="" />}
-                      {b.pendingFile ? (
+                      {isImageBlockPending(b) ? (
                         <div style={{fontSize:'11px', color:'#f59e0b', marginTop:'6px', fontWeight:'bold'}}>待发布 · 保存后上传至图床</div>
                       ) : (
                         <div className="img-url">{b.content}</div>
@@ -683,6 +684,8 @@ const [mounted, setMounted] = useState(false);
   const [navIdx, setNavIdx] = useState(1); 
   const [expandedStep, setExpandedStep] = useState(1);
   const [editorBlocks, setEditorBlocks] = useState([]);
+  const editorBlocksRef = useRef(editorBlocks);
+  editorBlocksRef.current = editorBlocks;
   const [isDeploying, setIsDeploying] = useState(false);
   const [tagDraft, setTagDraft] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
@@ -1103,12 +1106,12 @@ const [mounted, setMounted] = useState(false);
     setLoading(true);
     setGalleryUploadProgress(null);
 
-    let blocksForSave = editorBlocks;
-    const pendingMediaCount = countPendingEditorMedia(editorBlocks);
+    let blocksForSave = editorBlocksRef.current;
+    const pendingMediaCount = countPendingEditorMedia(blocksForSave);
     if (pendingMediaCount > 0) {
       setSavePhase('media');
       try {
-        blocksForSave = await flushEditorBlocksMedia(editorBlocks, {
+        blocksForSave = await flushEditorBlocksMedia(blocksForSave, {
           onProgress: ({ done, total }) => setGalleryUploadProgress({ done, total }),
         });
         setEditorBlocks(blocksForSave);

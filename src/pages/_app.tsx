@@ -39,6 +39,16 @@ function BlogApp({ Component, pageProps, router }: AppPropsWithLayout) {
     })
   }, [])
 
+  useEffect(() => {
+    const root = document.documentElement
+    if (activeTheme === 'gallery' && !isAdminRoute) {
+      root.classList.add('gallery-theme')
+    } else {
+      root.classList.remove('gallery-theme')
+    }
+    return () => root.classList.remove('gallery-theme')
+  }, [activeTheme, isAdminRoute])
+
   return (
     <>
       {/* 2. 替换 Jivo 为 Chatwoot 增强版逻辑 */}

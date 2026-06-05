@@ -31,6 +31,10 @@ export const GalleryPost = ({
       <GalleryBreadcrumb
         items={[
           { label: '首页', href: '/' },
+          {
+            label: post.category?.name || '未分类',
+            href: `/${CONFIG.DEFAULT_SPECIAL_PAGES.CATEGORY}/${post.category?.id || ''}`,
+          },
           { label: post.title },
         ]}
         trailing={

@@ -24,12 +24,12 @@ export const GalleryShell = ({
   const showHeader = headerTitle !== false
 
   return (
-    <div className={`min-h-screen bg-white ${galleryShellClass}`}>
+    <div className={`min-h-screen min-h-[100dvh] bg-white ${galleryShellClass}`}>
       <GalleryFontLinks />
       <GallerySidebar />
 
       <div
-        className="flex min-h-screen min-w-0 flex-col bg-white"
+        className="flex min-h-screen min-h-[100dvh] min-w-0 flex-1 flex-col bg-white"
         style={{ marginLeft: GALLERY_SIDEBAR_WIDTH }}
       >
         {showHeader ? (

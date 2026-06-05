@@ -1,3 +1,4 @@
+import { GalleryPageLayout } from '@/src/themes/gallery/GalleryPageLayout'
 import { GalleryShell } from '@/src/themes/gallery/GalleryShell'
 import { Page, SharedNavFooterStaticProps } from '@/src/types/blog'
 import Footer from './footer/Footer'
@@ -11,9 +12,11 @@ export default function withNavFooter(
   return function WithNavFooterWrapper(props: SharedNavFooterStaticProps['props'] & { activeTheme?: string }) {
     if (props.activeTheme === 'gallery') {
       return (
-        <GalleryShell siteTitle={props.siteTitle}>
-          <WrappedComponent {...props} />
-        </GalleryShell>
+        <GalleryPageLayout>
+          <GalleryShell siteTitle={props.siteTitle}>
+            <WrappedComponent {...props} />
+          </GalleryShell>
+        </GalleryPageLayout>
       )
     }
 

@@ -420,3 +420,10 @@ html.dark .prose-gallery .cursor-pointer {
   opacity: 0;
   animation: gallery-grid-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+/* Gallery 全站：强制浅色底，避免 html.dark 露出底部黑条 */
+html.gallery-theme,
+html.gallery-theme body,
+html.gallery-theme #__next {
+  background-color: #ffffff !important;
+}

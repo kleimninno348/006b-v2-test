@@ -124,5 +124,9 @@ const PostPage: NextPage<{
 }
 
 const withNavPage = withNavFooter(PostPage)
-;(withNavPage as NextPageWithLayout).getLayout = (page) => <BlogLayoutPure>{page}</BlogLayoutPure>
+;(withNavPage as NextPageWithLayout).getLayout = (page) => {
+  const activeTheme = (page.props as { activeTheme?: string })?.activeTheme
+  if (activeTheme === 'gallery') return page
+  return <BlogLayoutPure>{page}</BlogLayoutPure>
+}
 export default withNavPage

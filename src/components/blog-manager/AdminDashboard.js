@@ -1324,7 +1324,7 @@ const [mounted, setMounted] = useState(false);
                  <p style={{fontSize:'11px', color:'#777', margin:'0 0 8px', lineHeight:1.5}}>Gallery 主题会展示下载按钮，对应此处填写内容。可写说明 + 链接，例如：欢迎下载-https://example.com</p>
                  <input className="glow-input" value={form.download || ''} onChange={e=>setForm({...form, download:e.target.value})} placeholder="说明文字与链接，留空则前台提示「暂无下载」" style={{fontSize:'13px'}} />
                </div>
-               <div style={{marginTop:'16px', fontSize:'12px', color:'#999', background:'#202024', borderRadius:'8px', padding:'12px 14px', lineHeight:1.7, border:'1px solid #333'}}>🖼️ <b style={{color:'greenyellow'}}>封面说明</b>：系统会自动把<b style={{color:'#fff'}}>排在第一位的图片块</b>用作本篇封面。若本篇没有任何图片块（纯文本），则自动显示默认封面。</div>
+               <div style={{marginTop:'16px', fontSize:'12px', color:'#999', background:'#202024', borderRadius:'8px', padding:'12px 14px', lineHeight:1.7, border:'1px solid #333'}}>🖼️ <b style={{color:'greenyellow'}}>封面说明</b>：系统会自动把<b style={{color:'#fff'}}>排在第一位的图片块</b>用作列表卡片封面与内页顶栏；<b style={{color:'#fff'}}>不会</b>在正文重复显示。大图库请在 Step 4「图库」上传并点「保存图库」。</div>
             </StepAccordion>
             <StepAccordion step={2} title="分类与时间" isOpen={expandedStep === 2} onToggle={()=>setExpandedStep(expandedStep===2?0:2)}>
                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px'}}>

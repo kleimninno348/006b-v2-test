@@ -1705,6 +1705,11 @@ const [mounted, setMounted] = useState(false);
                  <label style={{display:'block', fontSize:'11px', color:'#bbb', marginBottom:'6px'}}>下载信息 <span style={{color:'#777', fontWeight:'normal'}}>(选填)</span></label>
                  <p style={{fontSize:'11px', color:'#777', margin:'0 0 8px', lineHeight:1.5}}>Gallery 主题会展示下载按钮，对应此处填写内容。可写说明 + 链接，例如：欢迎下载-https://example.com</p>
                  <input className="glow-input" value={form.download || ''} onChange={e=>setForm({...form, download:e.target.value})} placeholder="说明文字与链接，留空则前台提示「暂无下载」" style={{fontSize:'13px'}} />
+                 <div style={{marginTop:'12px'}}>
+                   <label style={{display:'block', fontSize:'11px', color:'#bbb', marginBottom:'6px'}}>资源包大小 <span style={{color:'#777', fontWeight:'normal'}}>(选填)</span></label>
+                   <input className="glow-input" value={form.download_size || ''} onChange={e=>setForm({...form, download_size:e.target.value})} placeholder="例如：639 MB、1.2 GB" style={{fontSize:'13px'}} />
+                   <p style={{fontSize:'11px', color:'#777', margin:'6px 0 0', lineHeight:1.5}}>填写后显示在下载页标题栏右侧；留空则不显示。需在 Notion 数据库添加 Rich text 属性 <code style={{color:'#aaa'}}>download_size</code>。</p>
+                 </div>
                </div>
                <div style={{marginTop:'16px', fontSize:'12px', color:'#999', background:'#202024', borderRadius:'8px', padding:'12px 14px', lineHeight:1.7, border:'1px solid #333'}}>🖼️ <b style={{color:'greenyellow'}}>封面说明</b>：保存后系统会把<b style={{color:'#fff'}}>第一个图片块</b>的图床链接写入 Notion <b style={{color:'#fff'}}>cover</b> 并在内页嵌入；列表卡片也用该图。大图库请在 Step 4 批量添加（本地预览，保存后上传）。</div>
             </StepAccordion>

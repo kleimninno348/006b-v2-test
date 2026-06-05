@@ -54,7 +54,10 @@ export default async function handler(req, res) {
         pinned: readPinnedFromNotionProperties(p),
         download: (p.download?.type === 'rich_text'
           ? (p.download.rich_text || []).map((t) => t.plain_text).join('')
-          : p.download?.url) || ''
+          : p.download?.url) || '',
+        download_size: (p.download_size?.type === 'rich_text'
+          ? (p.download_size.rich_text || []).map((t) => t.plain_text).join('')
+          : '') || ''
       };
     });
 

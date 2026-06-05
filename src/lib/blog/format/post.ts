@@ -37,7 +37,7 @@ const formatPost = async (post: PageObjectResponse): Promise<Post> => {
     tags,
     ...options
   } = properties
-  const { color_title, original_cover, repost, download } = options
+  const { color_title, original_cover, repost, download, download_size } = options
 
   const postTitle = title.type === 'title' && title.title[0]?.plain_text
   const postStatus =
@@ -127,6 +127,10 @@ const formatPost = async (post: PageObjectResponse): Promise<Post> => {
         download.rich_text?.map((t) => t.plain_text).join('')) ||
       (download?.type === 'url' && download.url) ||
       '',
+    downloadSize:
+      (download_size?.type === 'rich_text' &&
+        download_size.rich_text?.map((t) => t.plain_text).join('')) ||
+      '',
   }
 
   const formattedPost = {
@@ -163,6 +167,7 @@ const formatPost = async (post: PageObjectResponse): Promise<Post> => {
       originalCover: postOptions.originalCover ?? false,
       repost: postOptions.repost ?? '',
       download: postOptions.download ?? '',
+      downloadSize: postOptions.downloadSize ?? '',
     },
   } as Post
   return formattedPost

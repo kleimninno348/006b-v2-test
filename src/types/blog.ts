@@ -98,6 +98,8 @@ export type Post = {
     originalCover: boolean
     repost: string
     download: string
+    /** 资源包大小，如 639 MB；留空则下载页不展示 */
+    downloadSize: string
   }
 }
 

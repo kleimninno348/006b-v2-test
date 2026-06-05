@@ -8,7 +8,7 @@ type GalleryPostDownloadActionsProps = {
   downloadContent: string
 }
 
-/** 下载页右侧上半：点击后弹出文章专属下载信息 */
+/** 下载页右侧：居中下载按钮，点击弹出文章专属下载信息 */
 export function GalleryPostDownloadActions({
   postTitle,
   downloadContent,
@@ -20,7 +20,7 @@ export function GalleryPostDownloadActions({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full rounded-md bg-black px-6 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-neutral-800 active:bg-neutral-900 sm:w-auto sm:min-w-[200px]"
+        className="min-w-[200px] rounded-md bg-black px-10 py-3.5 text-[15px] font-bold text-white transition-colors hover:bg-neutral-800 active:bg-neutral-900 sm:min-w-[240px]"
       >
         下载
       </button>

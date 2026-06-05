@@ -30,6 +30,12 @@ const withRetry = async (fn, retries = 4) => {
   throw lastErr;
 };
 
+/** 读取 Notion rich_text 字段 */
+function readRichTextProperty(prop) {
+  if (!prop || prop.type !== 'rich_text') return '';
+  return (prop.rich_text || []).map((t) => t.plain_text).join('');
+}
+
 /** 读取 Notion download 字段（支持 rich_text；兼容旧 url 类型） */
 function readDownloadProperty(prop) {
   if (!prop) return '';
@@ -40,6 +46,16 @@ function readDownloadProperty(prop) {
     return prop.url || '';
   }
   return '';
+}
+
+/** 按数据库属性类型写入 rich_text */
+function buildRichTextProperty(value, targetProp) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  const propType = targetProp?.type || 'rich_text';
+  if (propType === 'rich_text') {
+    return { rich_text: text ? [{ text: { content: text } }] : [] };
+  }
+  return { rich_text: text ? [{ text: { content: text } }] : [] };
 }
 
 /** 按数据库属性类型写入 download */
@@ -299,7 +315,7 @@ export default async function handler(req, res) {
       try { const blocksRes = await withRetry(() => notion.blocks.children.list({ block_id: queryId })); rawBlocks = blocksRes.results; } catch (e) {}
       let editorBlocks = [];
       try { editorBlocks = await notionToEditorBlocks(rawBlocks); } catch (e) { editorBlocks = []; }
-      return res.status(200).json({ success: true, post: { id: page.id, title: p.title?.title?.[0]?.plain_text || p.Page?.title?.[0]?.plain_text || '无标题', slug: p.slug?.rich_text?.[0]?.plain_text || '', excerpt: p.excerpt?.rich_text?.[0]?.plain_text || '', category: p.category?.select?.name || '', tags: (p.tags?.multi_select || []).map(t => t.name).join(','), status: p.status?.status?.name || p.status?.select?.name || 'Published', type: p.type?.select?.name || 'Post', date: p.date?.date?.start || '', cover: p.cover?.url || p.cover?.file?.url || p.cover?.external?.url || '', pinned: readPinnedFromNotionProperties(p), download: readDownloadProperty(p.download), content: cleanContent, rawBlocks: rawBlocks, editorBlocks: editorBlocks } });
+      return res.status(200).json({ success: true, post: { id: page.id, title: p.title?.title?.[0]?.plain_text || p.Page?.title?.[0]?.plain_text || '无标题', slug: p.slug?.rich_text?.[0]?.plain_text || '', excerpt: p.excerpt?.rich_text?.[0]?.plain_text || '', category: p.category?.select?.name || '', tags: (p.tags?.multi_select || []).map(t => t.name).join(','), status: p.status?.status?.name || p.status?.select?.name || 'Published', type: p.type?.select?.name || 'Post', date: p.date?.date?.start || '', cover: p.cover?.url || p.cover?.file?.url || p.cover?.external?.url || '', pinned: readPinnedFromNotionProperties(p), download: readDownloadProperty(p.download), download_size: readRichTextProperty(p.download_size), content: cleanContent, rawBlocks: rawBlocks, editorBlocks: editorBlocks } });
     }
 
     if (req.method === 'PATCH') {
@@ -331,7 +347,7 @@ export default async function handler(req, res) {
 
     if (req.method === 'POST') {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { id, title, content, slug, excerpt, category, tags, status, date, type, cover, download, blocksData } = body;
+      const { id, title, content, slug, excerpt, category, tags, status, date, type, cover, download, download_size, blocksData } = body;
       const useStructured = Array.isArray(blocksData) && blocksData.length > 0;
 
       // 1. 获取目标页面属性，用于动态判定类型
@@ -373,6 +389,9 @@ export default async function handler(req, res) {
       }
       if (download !== undefined) {
           props['download'] = buildDownloadProperty(download, targetProps['download']);
+      }
+      if (download_size !== undefined && targetProps['download_size']) {
+          props['download_size'] = buildRichTextProperty(download_size, targetProps['download_size']);
       }
 
       if (id) {

@@ -12,6 +12,11 @@ import { getPosts } from '@/src/lib/notion/getBlogData'
 import { addSubTitle } from '@/src/lib/util'
 import { GalleryPostDownloadPage } from '@/src/themes/gallery/GalleryPostDownloadPage'
 import {
+  GalleryAdBanner,
+  loadGalleryAdBanner,
+} from '@/src/lib/gallery/loadGalleryAdBanner'
+import { resolveActiveTheme } from '@/src/themes/getActiveTheme'
+import {
   NextPageWithLayout,
   Page,
   Post,
@@ -76,12 +81,16 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         downloadInstructionBlocks = (await formatBlocks(blocks)) as BlockResponse[]
       }
 
+      const activeTheme = await resolveActiveTheme()
+      const galleryAdBanner =
+        activeTheme === 'gallery' ? await loadGalleryAdBanner() : null
+
       const safeData = JSON.parse(
         JSON.stringify({
           ...sharedPageStaticProps.props,
           post,
           downloadInstructionBlocks,
-          downloadPageTitle: downloadPage?.nav || downloadPage?.title || null,
+          galleryAdBanner,
         })
       )
 
@@ -96,15 +105,15 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
 const PostDownloadPage: NextPage<{
   post: Post | null
   downloadInstructionBlocks: BlockResponse[]
-  downloadPageTitle?: string | null
   activeTheme?: string
   navPages?: Page[]
+  galleryAdBanner?: GalleryAdBanner | null
 }> = ({
   post,
   downloadInstructionBlocks,
-  downloadPageTitle,
   activeTheme,
   navPages = [],
+  galleryAdBanner = null,
 }) => {
   if (!post) return <Section404 />
 
@@ -113,8 +122,8 @@ const PostDownloadPage: NextPage<{
       <GalleryPostDownloadPage
         post={post}
         downloadInstructionBlocks={downloadInstructionBlocks}
-        downloadPageTitle={downloadPageTitle}
         navPages={navPages}
+        galleryAdBanner={galleryAdBanner}
       />
     )
   }

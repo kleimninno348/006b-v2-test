@@ -1,9 +1,11 @@
 import { BlockRender } from '@/src/components/blocks/BlockRender'
+import { GalleryAdBanner as GalleryAdBannerData } from '@/src/lib/gallery/loadGalleryAdBanner'
 import { Page, Post } from '@/src/types/blog'
 import { BlockResponse } from '@/src/types/notion'
 import Link from 'next/link'
 import CONFIG from '@/blog.config'
 import { getSubTitleInfo } from '@/src/lib/util'
+import { GalleryAdBanner } from './GalleryAdBanner'
 import { GalleryBreadcrumb } from './GalleryBreadcrumb'
 import { GalleryPostDownloadActions } from './GalleryPostDownloadActions'
 import { galleryPostTitleClass, galleryProseClass } from './galleryFonts'
@@ -11,8 +13,8 @@ import { galleryPostTitleClass, galleryProseClass } from './galleryFonts'
 type GalleryPostDownloadPageProps = {
   post: Post
   downloadInstructionBlocks: BlockResponse[]
-  downloadPageTitle?: string | null
   navPages?: Page[]
+  galleryAdBanner?: GalleryAdBannerData | null
 }
 
 const { CATEGORY } = CONFIG.DEFAULT_SPECIAL_PAGES
@@ -20,11 +22,12 @@ const { CATEGORY } = CONFIG.DEFAULT_SPECIAL_PAGES
 export function GalleryPostDownloadPage({
   post,
   downloadInstructionBlocks,
-  downloadPageTitle,
   navPages = [],
+  galleryAdBanner = null,
 }: GalleryPostDownloadPageProps) {
   const cover = post.cover?.light?.src
   const downloadValue = post.options?.download?.trim() ?? ''
+  const downloadSize = post.options?.downloadSize?.trim() ?? ''
   const postHref = `/post/${post.slug}`
 
   const categorySubTitle = getSubTitleInfo(CATEGORY, {
@@ -35,9 +38,6 @@ export function GalleryPostDownloadPage({
   const categoryParentHref = categorySubTitle?.slug
     ? `/${categorySubTitle.slug}`
     : `/${CATEGORY}`
-
-  const instructionsHeading =
-    downloadPageTitle?.trim() || '下载说明'
 
   return (
     <>
@@ -56,17 +56,22 @@ export function GalleryPostDownloadPage({
 
       <main className="flex flex-1 flex-col bg-white px-4 py-5 pb-10 sm:px-6 lg:px-10">
         <div className="mx-auto w-full max-w-[1120px]">
-          <div className="mb-5 border border-neutral-200 bg-neutral-50 px-4 py-3 sm:px-5">
+          <div className="mb-5 flex items-start justify-between gap-4 border border-neutral-200 bg-neutral-50 px-4 py-3 sm:px-5">
             <h1
-              className={`${galleryPostTitleClass} text-xl sm:text-2xl md:text-[1.65rem]`}
+              className={`min-w-0 flex-1 ${galleryPostTitleClass} text-xl sm:text-2xl md:text-[1.65rem]`}
             >
               {post.title}
             </h1>
+            {downloadSize ? (
+              <span className="shrink-0 pt-1 font-gallery text-sm font-medium text-neutral-600 sm:text-[15px]">
+                {downloadSize}
+              </span>
+            ) : null}
           </div>
 
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
             <div className="mx-auto w-full max-w-[380px] shrink-0 lg:mx-0 lg:max-w-[340px] xl:max-w-[380px]">
-              <div className="overflow-hidden rounded-sm border border-neutral-200 bg-neutral-100">
+              <div className="overflow-hidden rounded-md bg-neutral-100">
                 <div className="relative aspect-[10/13.35]">
                   {cover ? (
                     <img
@@ -90,20 +95,21 @@ export function GalleryPostDownloadPage({
             </div>
 
             <div className="min-w-0 flex-1">
-              <section className="mb-6 rounded-sm border border-neutral-200 bg-white px-5 py-6 sm:px-6">
-                <p className="mb-4 font-gallery text-[13px] font-medium uppercase tracking-wide text-neutral-400">
-                  作品下载
-                </p>
+              {galleryAdBanner ? (
+                <GalleryAdBanner
+                  banner={galleryAdBanner}
+                  className="mb-6 shrink-0 bg-white"
+                />
+              ) : null}
+
+              <section className="mb-8 flex justify-center py-2">
                 <GalleryPostDownloadActions
                   postTitle={post.title}
                   downloadContent={downloadValue}
                 />
               </section>
 
-              <section className="rounded-sm border border-neutral-200 bg-white px-5 py-6 sm:px-6 md:px-8">
-                <h2 className="mb-4 font-gallery text-[15px] font-semibold text-neutral-900">
-                  {instructionsHeading}
-                </h2>
+              <section className="pt-2">
                 {downloadInstructionBlocks.length > 0 ? (
                   <div className={`${galleryProseClass} text-[15px]`}>
                     <BlockRender blocks={downloadInstructionBlocks} />

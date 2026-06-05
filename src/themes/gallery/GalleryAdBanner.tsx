@@ -2,14 +2,15 @@ import { GalleryAdBanner as GalleryAdBannerData } from '@/src/lib/gallery/loadGa
 
 type GalleryAdBannerProps = {
   banner: GalleryAdBannerData
+  className?: string
 }
 
-/** Gallery Epic 风格：内页底部居中矩形挂件 */
-export function GalleryAdBanner({ banner }: GalleryAdBannerProps) {
+/** Gallery Epic 风格：内页底部 / 下载页顶部矩形挂件 */
+export function GalleryAdBanner({ banner, className }: GalleryAdBannerProps) {
   const { url, imageSrc, promoText } = banner
 
   return (
-    <aside className="mt-8 shrink-0 bg-white">
+    <aside className={className ?? 'mt-8 shrink-0 bg-white'}>
       <div className="mx-auto w-full max-w-[min(640px,84%)]">
         <a
           href={url}

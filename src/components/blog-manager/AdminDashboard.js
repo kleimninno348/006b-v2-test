@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head'; // 🟢 引入 Head 组件控制浏览器标签
+import { GalleryManager } from './GalleryManager';
 
 // ================= 1. 图标库 =================
 const Icons = {
@@ -1384,8 +1385,10 @@ const [mounted, setMounted] = useState(false);
                  )}
                </div>
             </StepAccordion>
-            
-            {/* 🟢 修复：移除了 Step 4 发布状态选择 */}
+
+            <StepAccordion step={4} title="图库（Gallery · Supabase）" isOpen={expandedStep === 4} onToggle={()=>setExpandedStep(expandedStep===4?0:4)}>
+              <GalleryManager postSlug={form.slug} postTitle={form.title} postNotionId={currentId} />
+            </StepAccordion>
             
             <BlockBuilder blocks={editorBlocks} setBlocks={setEditorBlocks} />
             

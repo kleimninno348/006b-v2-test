@@ -15,8 +15,12 @@ export const config = {
   },
 }
 
-// 单文件大小上限（字节）。可按需调整。
-const MAX_SIZE = 20 * 1024 * 1024 // 20MB
+// 单文件大小上限（字节）。Gallery 大图库建议 50MB；可用 LSKY_MAX_UPLOAD_MB 覆盖
+const MAX_UPLOAD_MB = Math.min(
+  Math.max(parseInt(process.env.LSKY_MAX_UPLOAD_MB || '50', 10) || 50, 1),
+  200
+)
+const MAX_SIZE = MAX_UPLOAD_MB * 1024 * 1024
 
 // 兰空实例地址：优先读环境变量，未配置则回退到默认域名
 const LSKY_BASE = (process.env.LSKY_URL || 'https://img.x1file.top').replace(/\/+$/, '')
@@ -113,9 +117,13 @@ export default async function handler(req, res) {
 
     // Lsky Pro 2.x: { status: true, message, data: { links: { url, ... } } }
     if (!lskyRes.ok || data.status === false) {
+      const lskyMsg = data.message || '兰空上传失败'
+      const sizeHint = /大小|size|limit|过大/i.test(lskyMsg)
+        ? `（兰空图床限制，请在兰空后台「策略/用户组」调大单张上传上限，当前代理允许 ${MAX_UPLOAD_MB}MB）`
+        : ''
       return res.status(lskyRes.status || 502).json({
         success: false,
-        error: data.message || '兰空上传失败',
+        error: `${lskyMsg}${sizeHint}`,
         data,
       })
     }
@@ -142,7 +150,7 @@ export default async function handler(req, res) {
     if (error.message === 'FILE_TOO_LARGE') {
       return res.status(413).json({
         success: false,
-        error: `文件过大，单文件上限 ${Math.round(MAX_SIZE / 1024 / 1024)}MB`,
+        error: `文件过大，本站代理单文件上限 ${MAX_UPLOAD_MB}MB`,
       })
     }
     console.error('Upload Proxy Error:', error)

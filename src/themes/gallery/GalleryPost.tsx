@@ -1,17 +1,16 @@
 import CONFIG from '@/blog.config'
-import { BlockRender } from '@/src/components/blocks/BlockRender'
 import CommentSection from '@/src/components/section/CommentSection'
 import { PartialPost, Post } from '@/src/types/blog'
 import { BlockResponse } from '@/src/types/notion'
 import Link from 'next/link'
 import { GalleryBreadcrumb } from './GalleryBreadcrumb'
 import { GalleryPostDownloadButton } from './GalleryPostDownloadButton'
+import { GalleryPostContent } from './GalleryPostContent'
 import {
   galleryCardTagClass,
   galleryInlineLinkClass,
   galleryPostTagLinkClass,
   galleryPostTitleClass,
-  galleryProseClass,
 } from './galleryFonts'
 
 type GalleryPostProps = {
@@ -77,11 +76,7 @@ export const GalleryPost = ({ post, blocks, navigation }: GalleryPostProps) => {
           <div className="mb-8" />
         )}
 
-        <div
-          className={`${galleryProseClass} rounded-sm border border-neutral-200 bg-white px-6 py-8 md:px-10`}
-        >
-          <BlockRender blocks={blocks} />
-        </div>
+        <GalleryPostContent postSlug={post.slug} blocks={blocks} />
 
         {(previousPost || nextPost) && (
           <nav className="mt-10 flex flex-col gap-3 border-t border-neutral-200 pt-8 sm:flex-row sm:justify-between">

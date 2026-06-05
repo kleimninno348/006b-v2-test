@@ -404,7 +404,7 @@ html.dark .prose-gallery .cursor-pointer {
 @keyframes gallery-grid-enter {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -412,13 +412,103 @@ html.dark .prose-gallery .cursor-pointer {
   }
 }
 
-.gallery-grid-enter {
-  animation: gallery-grid-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+@keyframes gallery-grid-load-more {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes gallery-grid-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes gallery-load-more-skeleton-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gallery-grid-panel {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.gallery-grid-panel--ready {
+  animation: gallery-grid-panel-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .gallery-grid-enter-item {
   opacity: 0;
-  animation: gallery-grid-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: gallery-grid-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.gallery-grid-load-more-item {
+  opacity: 0;
+  animation: gallery-grid-load-more 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.gallery-grid-image-shimmer {
+  background: linear-gradient(
+    105deg,
+    #ececec 0%,
+    #f5f5f5 38%,
+    #e8e8e8 50%,
+    #f5f5f5 62%,
+    #ececec 100%
+  );
+  background-size: 220% 100%;
+  animation: gallery-shimmer 1.6s ease-in-out infinite;
+}
+
+.gallery-load-more-skeleton {
+  background: linear-gradient(
+    105deg,
+    #f0f0f0 0%,
+    #f7f7f7 38%,
+    #ebebeb 50%,
+    #f7f7f7 62%,
+    #f0f0f0 100%
+  );
+  background-size: 220% 100%;
+  animation:
+    gallery-shimmer 1.8s ease-in-out infinite,
+    gallery-load-more-skeleton-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  opacity: 0;
+}
+
+.gallery-load-more-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-grid-panel,
+  .gallery-grid-panel--ready,
+  .gallery-grid-enter-item,
+  .gallery-grid-load-more-item,
+  .gallery-load-more-skeleton,
+  .gallery-grid-image-shimmer {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 /* Gallery 全站：强制浅色底，避免 html.dark 露出底部黑条 */

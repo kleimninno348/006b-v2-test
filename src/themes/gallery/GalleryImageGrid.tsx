@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { GALLERY_POST_PAGE_SIZE } from './galleryConstants'
+import { GalleryGridImage } from './GalleryGridImage'
 import { GalleryGridSkeleton } from './GalleryGridSkeleton'
 import { GalleryLightbox } from './GalleryLightbox'
 
@@ -39,6 +40,9 @@ export function GalleryImageGrid({
   const [active, setActive] = useState(false)
   const [error, setError] = useState('')
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [contentReady, setContentReady] = useState(false)
+  const [appendFrom, setAppendFrom] = useState(0)
+  const gridRef = useRef<HTMLDivElement>(null)
 
   const fetchPage = useCallback(
     async (pageNum: number, append: boolean) => {
@@ -61,8 +65,10 @@ export function GalleryImageGrid({
   useEffect(() => {
     let cancelled = false
     setLoading(true)
+    setContentReady(false)
     setError('')
     setPage(1)
+    setAppendFrom(0)
     setLightboxIndex(null)
     fetchPage(1, false)
       .catch((e) => {
@@ -80,15 +86,33 @@ export function GalleryImageGrid({
     }
   }, [fetchPage])
 
+  useEffect(() => {
+    if (loading) {
+      setContentReady(false)
+      return
+    }
+    const frame = requestAnimationFrame(() => setContentReady(true))
+    return () => cancelAnimationFrame(frame)
+  }, [loading])
+
   const loadMore = async () => {
     if (!hasMore || loadingMore) return
     const next = page + 1
+    const baseline = images.length
+    setAppendFrom(baseline)
     setLoadingMore(true)
     try {
       await fetchPage(next, true)
       setPage(next)
+      requestAnimationFrame(() => {
+        const firstNew = gridRef.current?.querySelector(
+          `[data-gallery-index="${baseline}"]`
+        )
+        firstNew?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : '加载失败')
+      setAppendFrom(0)
     } finally {
       setLoadingMore(false)
     }
@@ -108,7 +132,9 @@ export function GalleryImageGrid({
   }
 
   return (
-    <div className="gallery-grid-enter mb-10">
+    <div
+      className={`gallery-grid-panel mb-10 ${contentReady ? 'gallery-grid-panel--ready' : ''}`}
+    >
       <p className="mb-5 font-gallery text-[14px] text-neutral-500">
         共 {total} 张
       </p>
@@ -116,32 +142,43 @@ export function GalleryImageGrid({
         <p className="mb-4 text-center text-sm text-red-500">{error}</p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4"
+      >
         {images.map((img, index) => (
-          <button
+          <GalleryGridImage
             key={img.id}
-            type="button"
-            onClick={() => setLightboxIndex(index)}
-            className="gallery-grid-enter-item group relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-neutral-100 text-left ring-0 transition-all hover:ring-2 hover:ring-neutral-900/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
-            style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
-          >
-            <img
-              src={img.thumb_url || img.url}
-              alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              loading="lazy"
-            />
-          </button>
+            src={img.thumb_url || img.url}
+            index={index}
+            appendFrom={appendFrom}
+            onOpen={() => setLightboxIndex(index)}
+          />
         ))}
+
+        {loadingMore
+          ? Array.from({ length: Math.min(pageSize, 4) }).map((_, i) => (
+              <div
+                key={`more-skel-${i}`}
+                className="gallery-load-more-skeleton aspect-[3/4] w-full rounded-lg"
+                style={{ animationDelay: `${i * 70}ms` }}
+                aria-hidden
+              />
+            ))
+          : null}
       </div>
 
       {hasMore ? (
-        <div className="mt-10 flex justify-center">
+        <div
+          className={`mt-10 flex justify-center transition-opacity duration-300 ${
+            loadingMore ? 'pointer-events-none opacity-70' : 'opacity-100'
+          }`}
+        >
           <button
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="min-w-[140px] rounded-md bg-neutral-900 px-10 py-3 font-gallery text-[15px] font-semibold text-white transition-colors hover:bg-neutral-800 disabled:opacity-60"
+            className="gallery-load-more-btn min-w-[140px] rounded-md bg-neutral-900 px-10 py-3 font-gallery text-[15px] font-semibold text-white transition-all duration-200 hover:bg-neutral-800 disabled:opacity-60"
           >
             {loadingMore ? '加载中…' : '加载更多'}
           </button>

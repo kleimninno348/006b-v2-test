@@ -20,7 +20,6 @@ type GalleryPostProps = {
 }
 
 export const GalleryPost = ({ post, blocks, navigation }: GalleryPostProps) => {
-  const cover = post.cover?.light?.src
   const { previousPost, nextPost } = navigation
   const downloadValue = post.options?.download?.trim() ?? ''
 
@@ -38,14 +37,8 @@ export const GalleryPost = ({ post, blocks, navigation }: GalleryPostProps) => {
           />
         }
       />
-      <main className="flex-1 bg-white px-6 py-6">
-      <article className="mx-auto max-w-3xl">
-        {cover ? (
-          <div className="mb-8 overflow-hidden rounded-sm bg-neutral-100">
-            <img src={cover} alt={post.title} className="max-h-[420px] w-full object-cover" />
-          </div>
-        ) : null}
-
+      <main className="flex-1 bg-white px-6 py-6 lg:px-10">
+      <article className="mx-auto w-full max-w-[1120px]">
         <h1 className={`mb-3 ${galleryPostTitleClass}`}>{post.title}</h1>
 
         {post.tags && post.tags.length > 0 ? (

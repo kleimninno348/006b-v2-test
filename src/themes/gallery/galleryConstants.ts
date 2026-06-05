@@ -8,6 +8,9 @@ export const GALLERY_HOME_PAGE_SIZE = 12
 /** 分类 / 标签列表每页条数（4 列 × 6 行） */
 export const GALLERY_LIST_PAGE_SIZE = 24
 
+/** 文章内页图库：首屏 4 列 × 2 行，其余点「加载更多」 */
+export const GALLERY_POST_PAGE_SIZE = 8
+
 export const GALLERY_LOGIN_URL = CONFIG.GALLERY_LOGIN_URL || '#'
 
 export const GALLERY_LOGO_SRC = '/themes/gallery/logo.png'

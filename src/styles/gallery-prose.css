@@ -354,3 +354,69 @@ html.dark .prose-gallery summary,
 html.dark .prose-gallery .cursor-pointer {
   color: #171717 !important;
 }
+
+/* Gallery 图库骨架屏与入场过渡 */
+@keyframes gallery-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+.gallery-skeleton-shimmer {
+  background: linear-gradient(
+    105deg,
+    #f0f0f0 0%,
+    #f7f7f7 38%,
+    #ebebeb 50%,
+    #f7f7f7 62%,
+    #f0f0f0 100%
+  );
+  background-size: 220% 100%;
+  animation: gallery-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes gallery-dot-pulse {
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+.gallery-loading-dot {
+  animation: gallery-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.gallery-loading-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.gallery-loading-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes gallery-grid-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gallery-grid-enter {
+  animation: gallery-grid-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.gallery-grid-enter-item {
+  opacity: 0;
+  animation: gallery-grid-enter 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

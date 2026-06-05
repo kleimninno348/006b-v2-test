@@ -1,8 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-
-const DEFAULT_PAGE_SIZE = 24
+import { GALLERY_POST_PAGE_SIZE } from './galleryConstants'
+import { GalleryGridSkeleton } from './GalleryGridSkeleton'
+import { GalleryLightbox } from './GalleryLightbox'
 
 type GalleryApiImage = {
   id: string
@@ -27,7 +28,7 @@ type GalleryImageGridProps = {
 
 export function GalleryImageGrid({
   postSlug,
-  pageSize = DEFAULT_PAGE_SIZE,
+  pageSize = GALLERY_POST_PAGE_SIZE,
 }: GalleryImageGridProps) {
   const [images, setImages] = useState<GalleryApiImage[]>([])
   const [total, setTotal] = useState(0)
@@ -37,6 +38,7 @@ export function GalleryImageGrid({
   const [loadingMore, setLoadingMore] = useState(false)
   const [active, setActive] = useState(false)
   const [error, setError] = useState('')
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const fetchPage = useCallback(
     async (pageNum: number, append: boolean) => {
@@ -61,6 +63,7 @@ export function GalleryImageGrid({
     setLoading(true)
     setError('')
     setPage(1)
+    setLightboxIndex(null)
     fetchPage(1, false)
       .catch((e) => {
         if (!cancelled) {
@@ -92,51 +95,73 @@ export function GalleryImageGrid({
   }
 
   if (loading) {
-    return (
-      <p className="py-8 text-center text-sm text-neutral-400">图库加载中…</p>
-    )
+    return <GalleryGridSkeleton />
   }
 
-  if (!active) return null
+  if (!active) {
+    if (error) {
+      return (
+        <p className="py-10 text-center text-sm text-red-500">{error}</p>
+      )
+    }
+    return null
+  }
 
   return (
-    <div className="mb-8">
-      <p className="mb-4 text-[13px] text-neutral-500">
+    <div className="gallery-grid-enter mb-10">
+      <p className="mb-5 font-gallery text-[14px] text-neutral-500">
         共 {total} 张
       </p>
       {error ? (
         <p className="mb-4 text-center text-sm text-red-500">{error}</p>
       ) : null}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {images.map((img) => (
-          <a
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+        {images.map((img, index) => (
+          <button
             key={img.id}
-            href={img.url}
-            target="_blank"
-            rel="noreferrer"
-            className="group relative aspect-[3/4] overflow-hidden rounded-md bg-neutral-100"
+            type="button"
+            onClick={() => setLightboxIndex(index)}
+            className="gallery-grid-enter-item group relative aspect-[3/4] w-full overflow-hidden rounded-lg bg-neutral-100 text-left ring-0 transition-all hover:ring-2 hover:ring-neutral-900/15 focus:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900"
+            style={{ animationDelay: `${Math.min(index, 7) * 45}ms` }}
           >
             <img
               src={img.thumb_url || img.url}
               alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
               loading="lazy"
             />
-          </a>
+          </button>
         ))}
       </div>
+
       {hasMore ? (
-        <div className="mt-8 flex justify-center">
+        <div className="mt-10 flex justify-center">
           <button
             type="button"
             onClick={loadMore}
             disabled={loadingMore}
-            className="rounded-md bg-neutral-900 px-8 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-neutral-800 disabled:opacity-60"
+            className="min-w-[140px] rounded-md bg-neutral-900 px-10 py-3 font-gallery text-[15px] font-semibold text-white transition-colors hover:bg-neutral-800 disabled:opacity-60"
           >
             {loadingMore ? '加载中…' : '加载更多'}
           </button>
         </div>
       ) : null}
+
+      <GalleryLightbox
+        open={lightboxIndex !== null}
+        images={images}
+        index={lightboxIndex ?? 0}
+        onClose={() => setLightboxIndex(null)}
+        onPrev={() =>
+          setLightboxIndex((i) => (i !== null && i > 0 ? i - 1 : i))
+        }
+        onNext={() =>
+          setLightboxIndex((i) =>
+            i !== null && i < images.length - 1 ? i + 1 : i
+          )
+        }
+      />
     </div>
   )
 }

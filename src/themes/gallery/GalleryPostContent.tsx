@@ -33,12 +33,6 @@ export function GalleryPostContent({ postSlug, blocks }: GalleryPostContentProps
         </div>
       ) : null}
 
-      {ready && hasGallery ? (
-        <p className="mt-4 text-center text-[12px] text-neutral-400">
-          本篇使用图库模式展示；封面用于列表卡片，图库请在后台 Step 4 管理。
-        </p>
-      ) : null}
-
       {ready && !hasGallery && !showTextBody ? (
         <p className="py-6 text-center text-[13px] text-neutral-400">
           暂无图库数据。请在后台「图库（Gallery · Supabase）」上传并保存；封面图块仅作列表封面，不会在此重复显示。

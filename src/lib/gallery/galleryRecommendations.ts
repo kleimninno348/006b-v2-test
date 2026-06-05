@@ -33,7 +33,7 @@ function toRecommendPost(post: Post): GalleryRecommendPost {
 }
 
 /**
- * 猜你喜欢：同 tag → 同 category → 随机补足，最多 6 篇
+ * 热门推荐：同 tag → 同 category → 随机补足，最多 6 篇（非浏览量/下载量）
  */
 export function buildGalleryRecommendations(
   current: Post,

@@ -289,7 +289,7 @@ const CoverMissingModal = ({ open, closing, onConfirm, onCancel }) => {
         <h3 id="cover-modal-title" className="cover-modal-title">尚未添加图片块</h3>
         <p className="cover-modal-desc">
           当前文章没有任何图片块，发布后将使用<strong style={{ color: '#ddd' }}>默认封面</strong>。
-          你可以继续发布，或返回编辑添加图片块作为封面。
+          你可以继续发布，或返回编辑添加图片块。
         </p>
         <div className="cover-modal-actions">
           <button type="button" className="cover-modal-btn cover-modal-btn-secondary" onClick={onCancel}>

@@ -55,7 +55,7 @@ export const GalleryPost = ({
         ]}
       />
       <main className="flex flex-1 flex-col bg-white px-6 py-6 pb-8 lg:px-10">
-        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-0 xl:flex-row xl:items-start xl:gap-10">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-0 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
           <article className="min-w-0 flex-1">
             <div className="mb-3 flex items-start justify-between gap-6">
               <h1 className={`min-w-0 flex-1 ${galleryPostTitleClass}`}>
@@ -78,7 +78,7 @@ export const GalleryPost = ({
 
             <GalleryPostContent postSlug={post.slug} blocks={blocks} />
 
-            <div className="xl:hidden">
+            <div className="lg:hidden">
               <GalleryPostRecommendations posts={recommendations} />
             </div>
 
@@ -87,7 +87,7 @@ export const GalleryPost = ({
 
           <GalleryPopularSidebar
             posts={recommendations}
-            className="hidden xl:block"
+            className="hidden lg:block lg:sticky lg:top-6 lg:self-start"
           />
         </div>
       </main>

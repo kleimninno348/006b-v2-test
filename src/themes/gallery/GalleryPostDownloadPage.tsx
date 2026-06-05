@@ -59,7 +59,7 @@ export function GalleryPostDownloadPage({
       />
 
       <main className="flex flex-1 flex-col bg-white px-4 py-5 pb-10 sm:px-6 lg:px-10">
-        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 xl:flex-row xl:items-start xl:gap-10">
+        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
           <div className="min-w-0 flex-1">
             <div className="mb-5 flex items-start justify-between gap-4 border-b border-neutral-200 pb-3">
               <h1 className={`min-w-0 flex-1 ${galleryEpicBarTitleClass}`}>
@@ -133,7 +133,7 @@ export function GalleryPostDownloadPage({
 
           <GalleryPopularSidebar
             posts={recommendations}
-            className="hidden xl:block"
+            className="hidden lg:block lg:sticky lg:top-6 lg:self-start"
           />
         </div>
       </main>

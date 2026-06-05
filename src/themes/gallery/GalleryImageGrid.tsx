@@ -1,8 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { preloadGalleryImages } from '@/src/lib/gallery/preloadGalleryImages'
-import { GALLERY_POST_FETCH_LIMIT } from './galleryConstants'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { GALLERY_POST_PAGE_SIZE } from './galleryConstants'
 import { GalleryGridImage } from './GalleryGridImage'
 import { GalleryGridLoader } from './GalleryGridLoader'
 import { GalleryLightbox } from './GalleryLightbox'
@@ -25,86 +24,67 @@ type GalleryApiResponse = {
 
 type GalleryImageGridProps = {
   postSlug: string
+  pageSize?: number
 }
 
-async function fetchAllGalleryImages(
-  postSlug: string
-): Promise<{ images: GalleryApiImage[]; total: number }> {
-  const limit = GALLERY_POST_FETCH_LIMIT
-  let page = 1
-  let hasMore = true
-  let total = 0
-  const all: GalleryApiImage[] = []
-
-  while (hasMore) {
-    const res = await fetch(
-      `/api/gallery/${encodeURIComponent(postSlug)}?page=${page}&limit=${limit}`
-    )
-    const data: GalleryApiResponse = await res.json()
-    if (!data.success) {
-      throw new Error(data.error || '加载图库失败')
-    }
-    const batch = data.images || []
-    all.push(...batch)
-    total = data.total ?? all.length
-    hasMore = !!data.hasMore && batch.length > 0
-    page += 1
-    if (page > 200) break
-  }
-
-  return { images: all, total }
-}
-
-export function GalleryImageGrid({ postSlug }: GalleryImageGridProps) {
+export function GalleryImageGrid({
+  postSlug,
+  pageSize = GALLERY_POST_PAGE_SIZE,
+}: GalleryImageGridProps) {
   const [images, setImages] = useState<GalleryApiImage[]>([])
   const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [active, setActive] = useState(false)
   const [error, setError] = useState('')
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [contentReady, setContentReady] = useState(false)
+  const [appendFrom, setAppendFrom] = useState(0)
+  const gridRef = useRef<HTMLDivElement>(null)
 
-  const loadGallery = useCallback(async () => {
-    setLoading(true)
-    setContentReady(false)
-    setError('')
-    setLightboxIndex(null)
-
-    try {
-      const { images: allImages, total: count } =
-        await fetchAllGalleryImages(postSlug)
-
-      if (allImages.length === 0 && count === 0) {
-        setActive(false)
-        setImages([])
-        setTotal(0)
-        return
+  const fetchPage = useCallback(
+    async (pageNum: number, append: boolean) => {
+      const res = await fetch(
+        `/api/gallery/${encodeURIComponent(postSlug)}?page=${pageNum}&limit=${pageSize}`
+      )
+      const data: GalleryApiResponse = await res.json()
+      if (!data.success) {
+        throw new Error(data.error || '加载图库失败')
       }
-
-      const sources = allImages.map((img) => img.thumb_url || img.url)
-      await preloadGalleryImages(sources)
-
-      setImages(allImages)
-      setTotal(count)
-      setActive(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '加载失败')
-      setActive(false)
-      setImages([])
-    } finally {
-      setLoading(false)
-    }
-  }, [postSlug])
+      const list = data.images || []
+      setTotal(data.total || 0)
+      setHasMore(!!data.hasMore)
+      setActive(list.length > 0 || (data.total || 0) > 0)
+      setImages((prev) => (append ? [...prev, ...list] : list))
+    },
+    [postSlug, pageSize]
+  )
 
   useEffect(() => {
     let cancelled = false
-    loadGallery().then(() => {
-      if (cancelled) return
-    })
+    setLoading(true)
+    setContentReady(false)
+    setError('')
+    setPage(1)
+    setAppendFrom(0)
+    setLightboxIndex(null)
+    fetchPage(1, false)
+      .catch((e) => {
+        if (!cancelled) {
+          setError(e.message)
+          setActive(false)
+          setImages([])
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
       cancelled = true
     }
-  }, [loadGallery])
+  }, [fetchPage])
 
   useEffect(() => {
     if (loading) {
@@ -114,6 +94,29 @@ export function GalleryImageGrid({ postSlug }: GalleryImageGridProps) {
     const frame = requestAnimationFrame(() => setContentReady(true))
     return () => cancelAnimationFrame(frame)
   }, [loading])
+
+  const loadMore = async () => {
+    if (!hasMore || loadingMore) return
+    const next = page + 1
+    const baseline = images.length
+    setAppendFrom(baseline)
+    setLoadingMore(true)
+    try {
+      await fetchPage(next, true)
+      setPage(next)
+      requestAnimationFrame(() => {
+        const firstNew = gridRef.current?.querySelector(
+          `[data-gallery-index="${baseline}"]`
+        )
+        firstNew?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '加载失败')
+      setAppendFrom(0)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   if (loading) {
     return <GalleryGridLoader />
@@ -139,16 +142,48 @@ export function GalleryImageGrid({ postSlug }: GalleryImageGridProps) {
         <p className="mb-4 text-center text-sm text-red-500">{error}</p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+      <div
+        ref={gridRef}
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4"
+      >
         {images.map((img, index) => (
           <GalleryGridImage
             key={img.id}
             src={img.thumb_url || img.url}
             index={index}
+            appendFrom={appendFrom}
             onOpen={() => setLightboxIndex(index)}
           />
         ))}
+
+        {loadingMore
+          ? Array.from({ length: Math.min(pageSize, 4) }).map((_, i) => (
+              <div
+                key={`more-skel-${i}`}
+                className="gallery-load-more-skeleton aspect-[3/4] w-full rounded-lg"
+                style={{ animationDelay: `${i * 70}ms` }}
+                aria-hidden
+              />
+            ))
+          : null}
       </div>
+
+      {hasMore ? (
+        <div
+          className={`mt-10 flex justify-center transition-opacity duration-300 ${
+            loadingMore ? 'pointer-events-none opacity-70' : 'opacity-100'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="gallery-load-more-btn min-w-[140px] rounded-md bg-neutral-900 px-10 py-3 font-gallery text-[15px] font-semibold text-white transition-all duration-200 hover:bg-neutral-800 disabled:opacity-60"
+          >
+            {loadingMore ? '加载中…' : '显示更多'}
+          </button>
+        </div>
+      ) : null}
 
       <GalleryLightbox
         open={lightboxIndex !== null}

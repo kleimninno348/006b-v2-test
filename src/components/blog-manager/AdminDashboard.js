@@ -302,6 +302,21 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
     }
   };
 
+  // 在指定块之后插入图片块并上传（不修改原块正文，供内容块拖入图片）
+  const insertImageBlocksAfter = (blockId, fileList) => {
+    const files = Array.from(fileList || []).filter(f => /^(image|video)\//i.test(f.type));
+    if (!files.length) return;
+    const created = files.map(newImageBlock);
+    setBlocks(prev => {
+      const idx = prev.findIndex(b => b.id === blockId);
+      const next = [...prev];
+      next.splice(idx === -1 ? next.length : idx + 1, 0, ...created);
+      return next;
+    });
+    created.forEach((blk, i) => uploadInto(blk.id, files[i]));
+    scrollToBlock(created[created.length - 1].id);
+  };
+
   // 针对某个图片块的拖拽/选择：第一张填入当前块，多余的自动新建图片块
   const handleFilesForBlock = (blockId, fileList) => {
     const files = Array.from(fileList || []).filter(f => /^(image|video)\//i.test(f.type));
@@ -318,6 +333,38 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
     }
     uploadInto(blockId, first);
     restBlocks.forEach((blk, i) => uploadInto(blk.id, rest[i]));
+  };
+
+  const extractImageFilesFromDataTransfer = (dt) => {
+    if (!dt) return [];
+    const out = [];
+    if (dt.files?.length) {
+      Array.from(dt.files).forEach(f => {
+        if (/^(image|video)\//i.test(f.type)) out.push(f);
+      });
+    }
+    if (dt.items?.length) {
+      Array.from(dt.items).forEach(item => {
+        if (item.kind === 'file' && /^(image|video)\//i.test(item.type)) {
+          const f = item.getAsFile();
+          if (f && !out.includes(f)) out.push(f);
+        }
+      });
+    }
+    return out;
+  };
+
+  const extractImageFilesFromClipboard = (clipboardData) => {
+    if (!clipboardData?.items) return [];
+    const out = [];
+    for (let i = 0; i < clipboardData.items.length; i++) {
+      const it = clipboardData.items[i];
+      if (it.kind === 'file' && /^image\//i.test(it.type)) {
+        const f = it.getAsFile();
+        if (f) out.push(f);
+      }
+    }
+    return out;
   };
 
   // 截图粘贴：在末尾批量新建图片块并上传
@@ -350,20 +397,13 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
     setBlocks(prev => prev.map(b => b.id === blockId ? { ...b, images: (b.images || []).filter((_, i) => i !== idx) } : b));
   };
 
-  // 全局监听：Ctrl+V 粘贴截图直接上传；并阻止误拖到空白处导致浏览器打开图片
+  // 全局监听：Ctrl+V 粘贴截图（非内容块时追加到文末）
   useEffect(() => {
     const onPaste = (e) => {
-      const items = e.clipboardData && e.clipboardData.items;
-      if (!items) return;
-      const imgs = [];
-      for (let i = 0; i < items.length; i++) {
-        const it = items[i];
-        if (it.kind === 'file' && /^image\//i.test(it.type)) {
-          const f = it.getAsFile();
-          if (f) imgs.push(f);
-        }
-      }
+      const imgs = extractImageFilesFromClipboard(e.clipboardData);
       if (!imgs.length) return;
+      const active = document.activeElement;
+      if (active && (active.tagName === 'TEXTAREA' || active.tagName === 'INPUT')) return;
       e.preventDefault();
       appendAndUpload(imgs);
     };
@@ -444,7 +484,29 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
             <div className="block-label">{getBlockLabel(b.type)}</div>
             {b.type !== 'image' && <FormatBar b={b} onChange={(key, val) => updateBlock(b.id, val, key)} />}
             {b.type === 'h1' && <input className="glow-input" placeholder="输入大标题..." value={b.content} onChange={e=>updateBlock(b.id, e.target.value)} style={{fontSize:'20px', ...fmtStyle(b), fontWeight:'bold'}} />}
-            {b.type === 'text' && <textarea className="glow-input" placeholder="输入正文，直接粘贴多行链接..." value={b.content} onChange={e=>updateBlock(b.id, e.target.value)} style={{minHeight:'200px', ...fmtStyle(b)}} />}
+            {b.type === 'text' && (
+              <textarea
+                className="glow-input"
+                placeholder="输入正文；拖入或粘贴图片将自动在下方生成图片块，不影响本文"
+                value={b.content}
+                onChange={e=>updateBlock(b.id, e.target.value)}
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const files = extractImageFilesFromDataTransfer(e.dataTransfer);
+                  if (files.length) insertImageBlocksAfter(b.id, files);
+                }}
+                onPaste={e => {
+                  const imgs = extractImageFilesFromClipboard(e.clipboardData);
+                  if (!imgs.length) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  insertImageBlocksAfter(b.id, imgs);
+                }}
+                style={{minHeight:'200px', ...fmtStyle(b)}}
+              />
+            )}
             {b.type === 'note' && <textarea className="glow-input" placeholder="输入注释内容..." value={b.content} onChange={e=>updateBlock(b.id, e.target.value)} style={{minHeight:'80px', fontFamily: 'monospace', fontSize: '13px', ...fmtStyle(b), color: (b.color && b.color !== 'default') ? colorCss(b.color) : '#ff6b6b'}} />}
             {b.type === 'quote' && <textarea className="glow-input" placeholder="输入引用内容..." value={b.content} onChange={e=>updateBlock(b.id, e.target.value)} style={{minHeight:'90px', borderLeft:'4px solid greenyellow', paddingLeft:'12px', ...fmtStyle(b)}} />}
             {b.type === 'link' && (
@@ -499,7 +561,7 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
                     <div style={{pointerEvents:'none'}}>
                       <div style={{fontSize:'34px', marginBottom:'8px'}}>🖼️</div>
                       <div style={{fontWeight:'bold', color:'#ccc'}}>拖拽图片到此 · 点击选择 · 直接粘贴</div>
-                      <div style={{fontSize:'12px', marginTop:'4px'}}>自动上传至图床，无需手动外链</div>
+                      <div style={{fontSize:'12px', marginTop:'4px'}}>自动压缩并上传至图床（与图库共用限速队列）</div>
                     </div>
                  )}
                  {b.error && <div className="img-err">⚠ {b.error}</div>}

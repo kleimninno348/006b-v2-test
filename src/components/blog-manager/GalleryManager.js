@@ -199,7 +199,7 @@ export function GalleryManager({ postSlug, postTitle, postNotionId }) {
           <div className="img-uploading">
             <div className="img-spin" />
             <div>
-              压缩并上传中… {uploadProgress.done}/{uploadProgress.total}
+              上传中… {uploadProgress.done}/{uploadProgress.total}
             </div>
           </div>
         ) : (

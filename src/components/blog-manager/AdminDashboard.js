@@ -218,6 +218,25 @@ const GlobalStyle = () => (
     .block-label { font-size: 12px; color: greenyellow; margin-bottom: 8px; fontWeight: bold; text-transform: uppercase; letter-spacing: 1px; }
     .block-del { width: 40px; background: #ff4d4f; border-radius: 10px; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; cursor: pointer; color: white; align-self: stretch; }
     .block-card-wrap:hover .block-del { opacity: 1; pointer-events: auto; }
+    .block-view-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; padding: 10px 14px; background: #2a2a2e; border: 1px solid #333; border-radius: 10px; flex-wrap: wrap; }
+    .block-view-toggle { display: flex; gap: 6px; }
+    .block-view-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid #555; background: #202024; color: #aaa; cursor: pointer; font-size: 12px; font-weight: 600; transition: 0.2s; }
+    .block-view-btn.active { border-color: greenyellow; color: greenyellow; background: rgba(173,255,47,0.08); }
+    .block-view-btn:hover:not(.active) { border-color: #777; color: #ddd; }
+    .block-view-hint { font-size: 11px; color: #888; line-height: 1.5; }
+    .block-minimap { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; padding: 14px; background: #252528; border: 1px solid #333; border-radius: 12px; max-height: min(72vh, 680px); overflow-y: auto; align-content: start; }
+    .block-minimap-item { position: relative; min-height: 108px; border: 1px solid #444; border-radius: 8px; background: #1c1c1f; padding: 8px; cursor: grab; transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s, transform 0.15s; display: flex; flex-direction: column; gap: 4px; user-select: none; touch-action: none; }
+    .block-minimap-item:active { cursor: grabbing; }
+    .block-minimap-item.is-dragging { opacity: 0.45; transform: scale(0.97); }
+    .block-minimap-item.is-drop-target { border-color: greenyellow; box-shadow: 0 0 0 2px rgba(173,255,47,0.25); }
+    .block-minimap-item.is-cover { border-color: rgba(173,255,47,0.55); }
+    .block-minimap-item.just-moved { animation: moveHighlight 0.6s ease-out; }
+    .block-minimap-index { position: absolute; top: 6px; left: 6px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 4px; background: rgba(0,0,0,0.65); color: greenyellow; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; z-index: 1; }
+    .block-minimap-type { font-size: 10px; color: #888; margin-top: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .block-minimap-preview { flex: 1; font-size: 11px; line-height: 1.35; color: #ccc; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; word-break: break-word; }
+    .block-minimap-thumb { flex: 1; min-height: 48px; max-height: 56px; border-radius: 4px; overflow: hidden; background: #111; display: flex; align-items: center; justify-content: center; }
+    .block-minimap-thumb img, .block-minimap-thumb video { width: 100%; height: 100%; object-fit: cover; }
+    .block-minimap-cover { position: absolute; top: 6px; right: 6px; font-size: 9px; padding: 2px 5px; border-radius: 3px; background: greenyellow; color: #000; font-weight: 700; z-index: 1; }
     .acc-btn { width: 100%; background: #424242; padding: 15px 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border: 1px solid #555; color: #fff; margin-bottom: 10px; transition: 0.2s; }
     .acc-btn:hover { border-color: greenyellow; color: greenyellow; }
     .acc-content { overflow: hidden; transition: max-height 0.3s ease; max-height: 0; padding: 0 10px; }
@@ -271,6 +290,9 @@ const GlobalStyle = () => (
     ::-webkit-scrollbar-track { background: #202024; }
     ::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #555; }
+    .admin-toast { position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(-12px); z-index: 10002; padding: 12px 22px; border-radius: 12px; background: #202024; border: 1px solid rgba(173,255,47,0.45); color: #eee; font-size: 14px; font-weight: 600; box-shadow: 0 12px 36px rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.26s ease, transform 0.26s ease; white-space: nowrap; }
+    .admin-toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .admin-toast.is-closing { opacity: 0; transform: translateX(-50%) translateY(-8px); }
   `}} />
 );
 
@@ -285,6 +307,19 @@ const SearchInput = ({ value, onChange }) => (
 const GalleryOnlyTag = () => (
   <span className="gallery-only-tag">(Gallery主题专用)</span>
 );
+
+const AdminToast = ({ message, visible, closing }) => {
+  if (!visible && !closing) return null;
+  return (
+    <div
+      className={`admin-toast ${visible && !closing ? 'is-visible' : ''} ${closing ? 'is-closing' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
+      {message}
+    </div>
+  );
+};
 
 const StepAccordion = ({ step, title, isOpen, onToggle, children }) => (
   <div>
@@ -914,8 +949,61 @@ const splitLockBody = (body) => {
 // ==========================================
 // 4. 积木编辑器
 // ==========================================
+const BLOCK_TYPE_SHORT = {
+  h1: 'H1 标题',
+  text: '正文',
+  image: '图片',
+  quote: '引用',
+  link: '链接',
+  note: '注释',
+  lock: '加密',
+};
+
+const BlockMinimapItem = ({ block, index, isCover, isDragging, isDropTarget, justMoved, onDragStart, onDragOver, onDrop, onDragEnd }) => {
+  const previewText = (() => {
+    const raw = (block.content || '').trim();
+    if (block.type === 'link') return raw || block.url || '（空链接）';
+    if (block.type === 'lock') return raw || (block.images?.length ? `${block.images.length} 张加密图` : '（空加密块）');
+    if (raw) return raw;
+    return '（空）';
+  })();
+  const thumbUrl =
+    block.type === 'image' && block.content
+      ? block.content
+      : block.type === 'lock' && block.images?.length
+        ? block.images[0]
+        : null;
+  const isVideoThumb = thumbUrl && isVideoImageContent(thumbUrl);
+
+  return (
+    <div
+      className={`block-minimap-item ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''} ${isCover ? 'is-cover' : ''} ${justMoved ? 'just-moved' : ''}`}
+      draggable
+      onDragStart={(e) => onDragStart(e, index)}
+      onDragOver={(e) => onDragOver(e, index)}
+      onDrop={(e) => onDrop(e, index)}
+      onDragEnd={onDragEnd}
+      title={`第 ${index + 1} 块 · ${BLOCK_TYPE_SHORT[block.type] || block.type} · 拖拽调整顺序`}
+    >
+      <span className="block-minimap-index">{index + 1}</span>
+      {isCover ? <span className="block-minimap-cover">封面</span> : null}
+      <div className="block-minimap-type">{BLOCK_TYPE_SHORT[block.type] || block.type}</div>
+      {thumbUrl ? (
+        <div className="block-minimap-thumb">
+          {isVideoThumb ? <video src={thumbUrl} muted playsInline /> : <img src={thumbUrl} alt="" draggable={false} />}
+        </div>
+      ) : (
+        <div className="block-minimap-preview">{previewText}</div>
+      )}
+    </div>
+  );
+};
+
 const BlockBuilder = ({ blocks, setBlocks }) => {
   const [movingId, setMovingId] = useState(null);
+  const [blockViewMode, setBlockViewMode] = useState('expanded');
+  const [dragIndex, setDragIndex] = useState(null);
+  const [dropIndex, setDropIndex] = useState(null);
   const coverImageBlockId = findCoverImageBlock(blocks)?.id ?? null;
 
   const scrollToBlock = (id) => {
@@ -928,6 +1016,7 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
   const addBlock = (type) => {
     const newId = Date.now() + Math.random();
     setBlocks([...blocks, { id: newId, type, content: '', pwd: '', url: '', images: [], bold: false, italic: false, color: 'default' }]);
+    setBlockViewMode('expanded');
     scrollToBlock(newId);
   };
   const updateBlock = (id, val, key='content') => { setBlocks(blocks.map(b => b.id === id ? { ...b, [key]: val } : b)); };
@@ -1108,6 +1197,44 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
     scrollToBlock(item.id);
   };
 
+  const reorderBlocks = (fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
+    const newBlocks = [...blocks];
+    const [item] = newBlocks.splice(fromIndex, 1);
+    newBlocks.splice(toIndex, 0, item);
+    setBlocks(newBlocks);
+    setMovingId(item.id);
+    setTimeout(() => setMovingId(null), 600);
+  };
+
+  const handleMinimapDragStart = (e, index) => {
+    setDragIndex(index);
+    setDropIndex(null);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+    if (e.currentTarget) e.dataTransfer.setDragImage(e.currentTarget, 40, 30);
+  };
+
+  const handleMinimapDragOver = (e, index) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (dragIndex !== null && dragIndex !== index) setDropIndex(index);
+  };
+
+  const handleMinimapDrop = (e, index) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const from = dragIndex ?? parseInt(e.dataTransfer.getData('text/plain'), 10);
+    if (!Number.isNaN(from)) reorderBlocks(from, index);
+    setDragIndex(null);
+    setDropIndex(null);
+  };
+
+  const handleMinimapDragEnd = () => {
+    setDragIndex(null);
+    setDropIndex(null);
+  };
+
   const getBlockLabel = (type) => {
       if (type === 'h1') return 'H1 标题';
       if (type === 'lock') return '🔒 加密块';
@@ -1128,6 +1255,56 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
           <div className="neo-btn" onClick={()=>addBlock('note')}>💬 注释块</div>
           <div className="neo-btn" onClick={()=>addBlock('lock')}>🔒 加密块</div>
       </div>
+      <div className="block-view-toolbar">
+        <div className="block-view-toggle">
+          <button
+            type="button"
+            className={`block-view-btn ${blockViewMode === 'expanded' ? 'active' : ''}`}
+            onClick={() => setBlockViewMode('expanded')}
+          >
+            放大视图
+          </button>
+          <button
+            type="button"
+            className={`block-view-btn ${blockViewMode === 'compact' ? 'active' : ''}`}
+            onClick={() => setBlockViewMode('compact')}
+          >
+            缩小视图
+          </button>
+        </div>
+        <div className="block-view-hint">
+          {blockViewMode === 'compact'
+            ? '导览模式：拖拽缩略块可快速调整顺序 · 编辑内容请切回放大视图'
+            : '放大视图下可通过块左侧按钮调整顺序'}
+        </div>
+      </div>
+      {blockViewMode === 'compact' ? (
+        blocks.length === 0 ? (
+          <div style={{textAlign:'center', color:'#666', padding:'40px', border:'2px dashed #444', borderRadius:'12px'}}>👋 正文暂无内容，请点击上方按钮添加模块，首个图片块将被作为本篇封面</div>
+        ) : (
+          <div
+            className="block-minimap"
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+            onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          >
+            {blocks.map((b, index) => (
+              <BlockMinimapItem
+                key={b.id}
+                block={b}
+                index={index}
+                isCover={b.id === coverImageBlockId}
+                isDragging={dragIndex === index}
+                isDropTarget={dropIndex === index && dragIndex !== index}
+                justMoved={movingId === b.id}
+                onDragStart={handleMinimapDragStart}
+                onDragOver={handleMinimapDragOver}
+                onDrop={handleMinimapDrop}
+                onDragEnd={handleMinimapDragEnd}
+              />
+            ))}
+          </div>
+        )
+      ) : (
       <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
         {blocks.map((b, index) => (
           <div key={b.id} className="block-card-wrap">
@@ -1249,6 +1426,7 @@ const BlockBuilder = ({ blocks, setBlocks }) => {
         ))}
         {blocks.length === 0 && <div style={{textAlign:'center', color:'#666', padding:'40px', border:'2px dashed #444', borderRadius:'12px'}}>👋 正文暂无内容，请点击上方按钮添加模块，首个图片块将被作为本篇封面</div>}
       </div>
+      )}
     </div>
   );
 };
@@ -1341,7 +1519,9 @@ const [mounted, setMounted] = useState(false);
   const editorBlocksRef = useRef(editorBlocks);
   editorBlocksRef.current = editorBlocks;
   const editingSlugRef = useRef(null);
-  const [isDeploying, setIsDeploying] = useState(false);
+  const silentRefreshRef = useRef(false);
+  const adminToastTimerRef = useRef(null);
+  const [adminToast, setAdminToast] = useState({ message: '', visible: false, closing: false });
   const [tagDraft, setTagDraft] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
   const [catDraft, setCatDraft] = useState('');
@@ -1439,6 +1619,17 @@ const [mounted, setMounted] = useState(false);
     }, 240);
   };
 
+  const showAdminToast = (message) => {
+    if (adminToastTimerRef.current) clearTimeout(adminToastTimerRef.current);
+    setAdminToast({ message, visible: true, closing: false });
+    adminToastTimerRef.current = setTimeout(() => {
+      setAdminToast((prev) => ({ ...prev, closing: true }));
+      adminToastTimerRef.current = setTimeout(() => {
+        setAdminToast({ message: '', visible: false, closing: false });
+      }, 280);
+    }, 2800);
+  };
+
   const attemptSave = () => {
     const msg = getMissingFieldMsg();
     if (msg) { alert('⚠️ ' + msg); return; }
@@ -1507,7 +1698,7 @@ const [mounted, setMounted] = useState(false);
 
   // 🟢 5. 处理函数
   const handleThemeChange = async (version) => {
-    if (isThemeLoading || isDeploying || loading || version === currentActiveTheme) return;
+    if (isThemeLoading || loading || version === currentActiveTheme) return;
     const configItem = themeConfig || posts.find(p => p.slug === 'theme-config');
     if (!configItem) { alert("未找到配置页"); return; }
     const previousTheme = currentActiveTheme;
@@ -1859,7 +2050,7 @@ const [mounted, setMounted] = useState(false);
   };
   
   const handleSave = async () => {
-    if (isDeploying || isThemeLoading) return alert("请等待当前任务完成...");
+    if (isThemeLoading) return alert("请等待当前任务完成...");
 
     // 🧩 组件(Widget)：仅更新 标题/摘要/头像(cover)，不触碰正文块，避免误改导致部署失败
     if (form.type === 'Widget') {
@@ -2008,22 +2199,14 @@ const [mounted, setMounted] = useState(false);
     }
   };
 
-  const handleManualDeploy = async () => {
-    if (isDeploying || isThemeLoading) return;
-    if (!confirm('确定要立即更新全站前台页面吗？\n保存内容后通常会自动更新，一般无需手动操作。')) return;
-    setIsDeploying(true);
-    try {
-      const data = await triggerContentRevalidation({ scope: 'full', freshTheme: true });
-      if (data && data.failed > 0) {
-        alert(`⚠️ 部分页面更新失败（${data.failed}/${data.total}），请稍后重试`);
-      } else {
-        alert(`✅ 全站页面已更新（${data?.total ?? 0} 个页面）`);
-      }
-    } catch (e) {
-      alert('刷新失败：' + e.message);
-    } finally {
-      setTimeout(() => setIsDeploying(false), 5000);
-    }
+  const handleManualDeploy = () => {
+    if (isThemeLoading) return;
+    showAdminToast('开始执行全站更新');
+    if (silentRefreshRef.current) return;
+    silentRefreshRef.current = true;
+    triggerContentRevalidation({ scope: 'full', freshTheme: true })
+      .catch((e) => console.warn('全站静默更新失败', e))
+      .finally(() => { silentRefreshRef.current = false; });
   };
 
   const deleteTagOption = (e, tagToDelete) => {
@@ -2155,7 +2338,7 @@ const [mounted, setMounted] = useState(false);
 
   if (!mounted) return null;
 
-  const adminLocked = isThemeLoading || isDeploying;
+  const adminLocked = isThemeLoading;
 
   return (
     <div style={{ minHeight: '100vh', background: '#303030', padding: '40px 20px' }}>
@@ -2179,6 +2362,7 @@ const [mounted, setMounted] = useState(false);
         extraNote={themeDoneModalNote}
         onClose={closeThemeDoneModal}
       />
+      <AdminToast message={adminToast.message} visible={adminToast.visible} closing={adminToast.closing} />
       <div style={{ maxWidth: 900, margin: '0 auto', opacity: adminLocked ? 0.45 : 1, pointerEvents: adminLocked ? 'none' : 'auto', transition: 'opacity 0.25s ease' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
            <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
@@ -2192,7 +2376,7 @@ const [mounted, setMounted] = useState(false);
            
            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
              {/* 🟢 修复：更新按钮 */}
-             <button onClick={handleManualDeploy} style={{background:'#424242', border: isDeploying ? '1px solid #555' : '1px solid greenyellow', opacity: isDeploying ? 0.5 : 1, padding:'10px', borderRadius:'8px', color: isDeploying ? '#888' : 'greenyellow', cursor: isDeploying ? 'not-allowed' : 'pointer'}} title="立即更新全站前台页面">
+             <button onClick={handleManualDeploy} style={{background:'#424242', border:'1px solid greenyellow', padding:'10px', borderRadius:'8px', color:'greenyellow', cursor:'pointer'}} title="立即更新全站前台页面">
                <Icons.Refresh />
              </button>
              {view === 'list' ? <AnimatedBtn text="发布新内容" onClick={handleCreate} /> : <AnimatedBtn text="返回列表" onClick={leaveEditView} />}

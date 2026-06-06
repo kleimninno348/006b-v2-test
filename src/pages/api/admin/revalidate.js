@@ -6,6 +6,10 @@ import {
   revalidateMany,
 } from '@/src/lib/blog/contentRevalidation'
 
+export const config = {
+  maxDuration: 300,
+}
+
 function resolveTagIds(tagsString) {
   return (tagsString || '')
     .split(',')
@@ -29,6 +33,7 @@ export default async function handler(req, res) {
       listScope = 'full',
       paths: explicitPaths,
       clearCaches = true,
+      freshTheme = false,
     } = req.body ?? {}
 
     if (scope === 'list') {
@@ -67,12 +72,14 @@ export default async function handler(req, res) {
       paths = await collectAllRevalidatePaths()
     }
 
-    const results = await revalidateMany(res, paths)
+    const results = await revalidateMany(res, paths, { freshTheme })
     const failed = results.filter((item) => !item.ok)
+    const succeeded = results.filter((item) => item.ok)
 
     return res.status(200).json({
       success: failed.length === 0,
       total: results.length,
+      succeeded: succeeded.length,
       failed: failed.length,
       results,
     })

@@ -11,6 +11,8 @@ import {
   getPages,
   getPosts,
   getPostsAndPieces,
+  getWidgets,
+  setRevalidateFreshTheme,
 } from '@/src/lib/notion/getBlogData'
 import { ApiScope } from '@/src/types/notion'
 
@@ -141,21 +143,36 @@ export async function collectPostRevalidatePaths(
 
 export async function revalidateMany(
   res: NextApiResponse,
-  paths: string[]
+  paths: string[],
+  options?: { freshTheme?: boolean }
 ): Promise<RevalidateResult[]> {
   const unique = Array.from(new Set(paths.map(normalizePath)))
   const results: RevalidateResult[] = []
+  const freshTheme = options?.freshTheme ?? false
 
-  for (const path of unique) {
-    try {
-      await res.revalidate(path)
-      results.push({ path, ok: true })
-    } catch (error) {
-      results.push({
-        path,
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-      })
+  if (freshTheme) {
+    setRevalidateFreshTheme(true)
+  }
+
+  try {
+    for (const path of unique) {
+      if (freshTheme) {
+        clearContentBuildCaches()
+      }
+      try {
+        await res.revalidate(path)
+        results.push({ path, ok: true })
+      } catch (error) {
+        results.push({
+          path,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    }
+  } finally {
+    if (freshTheme) {
+      setRevalidateFreshTheme(false)
     }
   }
 

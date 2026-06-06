@@ -5,7 +5,17 @@ import { readRichTextPlain } from './readProperty'
 
 const THEME_CONFIG_SLUG = 'theme-config'
 
-/** 单次构建/进程内复用，避免每个静态页重复请求 Notion */
+/** 按需刷新期间强制每次从数据源读取主题（避免 Serverless 进程内旧缓存） */
+let revalidateFreshTheme = false
+
+export function setRevalidateFreshTheme(enabled: boolean): void {
+  revalidateFreshTheme = enabled
+}
+
+export function isRevalidateFreshTheme(): boolean {
+  return revalidateFreshTheme
+}
+
 let remoteThemeCached: string | null | undefined
 let remoteThemeInflight: Promise<string | null> | null = null
 
@@ -18,10 +28,30 @@ function findThemeConfigPage(
 }
 
 async function fetchRemoteThemeFromNotion(): Promise<string | null> {
-  const pages = await getPages()
-  let themeConfigPage = findThemeConfigPage(pages)
+  const posts = await getPosts(ApiScope.Archive)
+  let themeConfigPage = posts.find(
+    (page) => readRichTextPlain(page.properties['slug']) === THEME_CONFIG_SLUG
+  )
 
-  // 若 Page 列表未命中，再从全库 Page scope 查询结果中找一次（避免 type 过滤遗漏）
+  if (!themeConfigPage) {
+    const draftPosts = await getPosts(ApiScope.Draft)
+    themeConfigPage = draftPosts.find(
+      (page) => readRichTextPlain(page.properties['slug']) === THEME_CONFIG_SLUG
+    )
+  }
+
+  if (!themeConfigPage) {
+    const widgets = await getWidgets()
+    themeConfigPage = widgets.find(
+      (page) => readRichTextPlain(page.properties['slug']) === THEME_CONFIG_SLUG
+    )
+  }
+
+  if (!themeConfigPage) {
+    const pages = await getPages()
+    themeConfigPage = findThemeConfigPage(pages)
+  }
+
   if (!themeConfigPage) {
     const allPageScope = await getAll(ApiScope.Page)
     themeConfigPage = findThemeConfigPage(
@@ -40,7 +70,10 @@ async function fetchRemoteThemeFromNotion(): Promise<string | null> {
  * 同一次 next build 内只请求 Notion 一次（Promise 去重）；失败时缓存 null，避免重试风暴。
  */
 export const getRemoteTheme = async (): Promise<string | null> => {
-  if (process.env.DISABLE_REMOTE_THEME_CACHE === '1') {
+  if (
+    revalidateFreshTheme ||
+    process.env.DISABLE_REMOTE_THEME_CACHE === '1'
+  ) {
     try {
       return await fetchRemoteThemeFromNotion()
     } catch (e) {

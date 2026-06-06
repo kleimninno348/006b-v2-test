@@ -43,26 +43,7 @@ async function triggerContentRevalidation(payload = { scope: 'full' }) {
   }
 }
 
-const THEME_REVALIDATE_BATCH_SIZE = 3;
-
-function describeRevalidatePath(path) {
-  if (path === '/') return '首页';
-  if (path === '/about') return '关于页';
-  if (path === '/friends') return '友链页';
-  if (path === '/download') return '下载说明页';
-  if (path === '/category') return '分类列表';
-  if (path === '/tag') return '标签列表';
-  if (path === '/archive') return '归档页';
-  if (path.startsWith('/post/') && path.endsWith('/download')) {
-    return `下载页 · ${path.slice(6, -9)}`;
-  }
-  if (path.startsWith('/post/')) return `文章 · ${path.slice(6)}`;
-  if (path.startsWith('/category/')) return `分类 · ${path.slice(10)}`;
-  if (path.startsWith('/tag/')) return `标签 · ${path.slice(5)}`;
-  if (path.startsWith('/archive/')) return `归档 · 第 ${path.slice(9)} 页`;
-  if (path.startsWith('/draft/')) return `草稿 · ${path.slice(7)}`;
-  return path;
-}
+const THEME_REVALIDATE_BATCH_SIZE = 1;
 
 /** 主题切换：分批刷新全站，返回真实进度 */
 async function runThemeRevalidation(onProgress) {
@@ -93,24 +74,14 @@ async function runThemeRevalidation(onProgress) {
   onProgress({
     step: 2,
     totalSteps: 3,
-    label: `共 ${total} 个页面待更新`,
+    label: '',
     done: 0,
     total,
-    hint: '将分批更新前台页面，请稍候',
+    hint: '',
   });
 
   for (let i = 0; i < paths.length; i += THEME_REVALIDATE_BATCH_SIZE) {
     const batch = paths.slice(i, i + THEME_REVALIDATE_BATCH_SIZE);
-    const batchLabel = batch.map(describeRevalidatePath).join('、');
-
-    onProgress({
-      step: 2,
-      totalSteps: 3,
-      label: `正在更新：${batchLabel}`,
-      done,
-      total,
-      hint: `${done + 1}–${Math.min(done + batch.length, total)} / ${total}`,
-    });
 
     const batchRes = await fetch('/api/admin/revalidate', {
       method: 'POST',
@@ -118,24 +89,35 @@ async function runThemeRevalidation(onProgress) {
       body: JSON.stringify({
         scope: 'batch',
         paths: batch,
-        clearCaches: i === 0,
+        clearCaches: true,
+        freshTheme: true,
       }),
     });
     const batchData = await batchRes.json();
-    if (!batchRes.ok) {
-      failedCount += batch.length;
-    } else {
-      failedCount += batchData.failed || 0;
-    }
+    const batchOk = batchRes.ok && batchData.success !== false
+    const batchSucceeded =
+      typeof batchData.succeeded === 'number'
+        ? batchData.succeeded
+        : batchOk
+          ? batch.length
+          : 0
+    const batchFailed =
+      typeof batchData.failed === 'number'
+        ? batchData.failed
+        : batchOk
+          ? 0
+          : batch.length
 
-    done += batch.length;
+    failedCount += batchFailed
+    done += batchSucceeded
+
     onProgress({
       step: 2,
       totalSteps: 3,
-      label: failedCount > 0 ? `部分页面更新失败（${failedCount}）` : `已完成 ${done}/${total}`,
+      label: '',
       done,
       total,
-      hint: batchLabel,
+      hint: '',
     });
   }
 
@@ -148,7 +130,7 @@ async function runThemeRevalidation(onProgress) {
     hint: failedCount > 0 ? `${failedCount} 个页面未能更新，可点右上角按钮重试` : '前台页面已全部更新',
   });
 
-  return { total, failed: failedCount };
+  return { total, failed: failedCount, succeeded: done };
 }
 
 // ================= 1. 图标库 =================
@@ -671,12 +653,14 @@ const FullScreenLoader = ({ phase, progress }) => {
   const isTheme = phase === 'theme';
   const meta = SAVE_PHASE_META[phase];
   const title = isTheme
-    ? (progress?.label || '正在切换主题…')
+    ? (hasProgress && progress?.step === 2
+        ? ''
+        : (progress?.label || '正在切换主题…'))
     : phase === 'gallery' && !(progress?.total > 0)
       ? '正在同步图库'
       : meta?.title || '加载中…';
   const hint = isTheme
-    ? (progress?.hint || '')
+    ? (hasProgress && progress?.step === 2 ? '' : (progress?.hint || ''))
     : getGalleryLoaderHint(phase, progress);
   const hasProgress = progress && progress.total > 0;
   const pct = hasProgress
@@ -697,7 +681,7 @@ const FullScreenLoader = ({ phase, progress }) => {
       </div>
       <div className="loader-text">处理中</div>
       {stepLine ? <div className="loader-step">{stepLine}</div> : null}
-      <div className="loader-phase">{title}</div>
+      {title ? <div className="loader-phase">{title}</div> : null}
       {hasProgress ? (
         <div className="loader-detail">
           已完成 {progress.done} / {progress.total} 页（{pct}%）
@@ -763,6 +747,57 @@ const CoverMissingModal = ({ open, closing, onConfirm, onCancel }) => {
           </button>
           <button type="button" className="cover-modal-btn cover-modal-btn-primary" onClick={onConfirm}>
             确认发布
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/** 主题切换完成提示（替代浏览器 alert） */
+const ThemeSwitchDoneModal = ({ open, closing, extraNote, onClose }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (open && !closing) {
+      setVisible(false);
+      const id = requestAnimationFrame(() => {
+        requestAnimationFrame(() => setVisible(true));
+      });
+      return () => cancelAnimationFrame(id);
+    }
+    if (!open || closing) setVisible(false);
+  }, [open, closing]);
+
+  if (!open && !closing) return null;
+
+  return (
+    <div
+      className={`cover-modal-backdrop ${visible && !closing ? 'is-visible' : ''} ${closing ? 'is-closing' : ''}`}
+      onClick={onClose}
+      role="presentation"
+    >
+      <div
+        className="cover-modal-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="theme-done-modal-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="cover-modal-icon" aria-hidden>🎨</div>
+        <h3 id="theme-done-modal-title" className="cover-modal-title">主题切换完成</h3>
+        <p className="cover-modal-desc">
+          BLOG 可能还需等待几分钟才能全部生效，也可点击右上角刷新按钮清除旧主题。
+          {extraNote ? (
+            <>
+              <br /><br />
+              <span style={{ color: '#ccc' }}>{extraNote}</span>
+            </>
+          ) : null}
+        </p>
+        <div className="cover-modal-actions">
+          <button type="button" className="cover-modal-btn cover-modal-btn-primary" onClick={onClose} style={{ flex: 1 }}>
+            知道了
           </button>
         </div>
       </div>
@@ -1327,6 +1362,10 @@ const [mounted, setMounted] = useState(false);
   const [coverModalOpen, setCoverModalOpen] = useState(false);
   const [coverModalClosing, setCoverModalClosing] = useState(false);
   const coverModalTimerRef = useRef(null);
+  const [themeDoneModalOpen, setThemeDoneModalOpen] = useState(false);
+  const [themeDoneModalClosing, setThemeDoneModalClosing] = useState(false);
+  const [themeDoneModalNote, setThemeDoneModalNote] = useState('');
+  const themeDoneModalTimerRef = useRef(null);
 
   const resetGalleryItems = () => {
     setGalleryItems((prev) => {
@@ -1373,6 +1412,23 @@ const [mounted, setMounted] = useState(false);
     coverModalTimerRef.current = setTimeout(() => {
       setCoverModalOpen(false);
       setCoverModalClosing(false);
+    }, 240);
+  };
+
+  const openThemeDoneModal = (extraNote = '') => {
+    if (themeDoneModalTimerRef.current) clearTimeout(themeDoneModalTimerRef.current);
+    setThemeDoneModalNote(extraNote);
+    setThemeDoneModalClosing(false);
+    setThemeDoneModalOpen(true);
+  };
+
+  const closeThemeDoneModal = () => {
+    if (themeDoneModalTimerRef.current) clearTimeout(themeDoneModalTimerRef.current);
+    setThemeDoneModalClosing(true);
+    themeDoneModalTimerRef.current = setTimeout(() => {
+      setThemeDoneModalOpen(false);
+      setThemeDoneModalClosing(false);
+      setThemeDoneModalNote('');
     }, 240);
   };
 
@@ -1466,16 +1522,20 @@ const [mounted, setMounted] = useState(false);
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      if (res.ok) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+
       if (!res.ok) throw new Error('保存主题配置失败');
 
       const refreshResult = await runThemeRevalidation(setThemeSwitchProgress);
       await fetchPosts();
 
-      if (refreshResult.failed > 0) {
-        alert(`主题已切换，但有 ${refreshResult.failed} 个页面未能更新。\n可稍后在列表页点右上角按钮重试。`);
-      } else {
-        alert('✅ 主题切换完成，前台页面已全部更新。');
-      }
+      openThemeDoneModal(
+        refreshResult.failed > 0
+          ? `另有 ${refreshResult.failed} 个页面未能及时更新，建议点击右上角刷新按钮重试。`
+          : ''
+      );
     } catch (err) {
       setActiveThemeLocal(previousTheme);
       alert('切换失败：' + (err.message || '未知错误'));
@@ -1946,7 +2006,7 @@ const [mounted, setMounted] = useState(false);
     if (!confirm('确定要立即更新全站前台页面吗？\n保存内容后通常会自动更新，一般无需手动操作。')) return;
     setIsDeploying(true);
     try {
-      const data = await triggerContentRevalidation({ scope: 'full' });
+      const data = await triggerContentRevalidation({ scope: 'full', freshTheme: true });
       if (data && data.failed > 0) {
         alert(`⚠️ 部分页面更新失败（${data.failed}/${data.total}），请稍后重试`);
       } else {
@@ -2105,6 +2165,12 @@ const [mounted, setMounted] = useState(false);
         closing={coverModalClosing}
         onConfirm={confirmCoverAndSave}
         onCancel={closeCoverModal}
+      />
+      <ThemeSwitchDoneModal
+        open={themeDoneModalOpen}
+        closing={themeDoneModalClosing}
+        extraNote={themeDoneModalNote}
+        onClose={closeThemeDoneModal}
       />
       <div style={{ maxWidth: 900, margin: '0 auto', opacity: adminLocked ? 0.45 : 1, pointerEvents: adminLocked ? 'none' : 'auto', transition: 'opacity 0.25s ease' }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>

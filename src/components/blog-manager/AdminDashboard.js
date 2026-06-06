@@ -219,13 +219,13 @@ const GlobalStyle = () => (
     .block-del { width: 40px; background: #ff4d4f; border-radius: 10px; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; cursor: pointer; color: white; align-self: stretch; }
     .block-card-wrap:hover .block-del { opacity: 1; pointer-events: auto; }
     .block-view-toolbar { display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
-    .block-view-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
-    .block-view-toggle .view-mode-btn { border: none; min-width: 11em; height: 3.2em; padding: 0 1.4em; border-radius: 3em; display: flex; justify-content: center; align-items: center; gap: 10px; background: #1C1A1C; cursor: pointer; transition: all 450ms ease-in-out; font-family: inherit; }
-    .block-view-toggle .view-mode-btn .view-mode-sparkle { width: 18px; height: 18px; fill: #AAAAAA; transition: all 800ms ease; flex-shrink: 0; }
-    .block-view-toggle .view-mode-btn .view-mode-text { font-weight: 600; color: #AAAAAA; font-size: 14px; transition: color 450ms ease; white-space: nowrap; }
-    .block-view-toggle .view-mode-btn:hover, .block-view-toggle .view-mode-btn.is-active { background: linear-gradient(0deg,#A47CF3,#683FEA); box-shadow: inset 0px 1px 0px 0px rgba(255, 255, 255, 0.4), inset 0px -4px 0px 0px rgba(0, 0, 0, 0.2), 0px 0px 0px 4px rgba(255, 255, 255, 0.2), 0px 0px 120px 0px #9917FF; transform: translateY(-2px); }
+    .block-view-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; }
+    .block-view-toggle .view-mode-btn { border: none; min-width: 0; height: 2.1em; padding: 0 0.85em; border-radius: 999px; display: inline-flex; justify-content: center; align-items: center; gap: 5px; background: #1C1A1C; cursor: pointer; transition: all 450ms ease-in-out; font-family: inherit; }
+    .block-view-toggle .view-mode-btn .view-mode-sparkle { width: 11px; height: 11px; fill: #AAAAAA; transition: all 800ms ease; flex-shrink: 0; }
+    .block-view-toggle .view-mode-btn .view-mode-text { font-weight: 600; color: #AAAAAA; font-size: 11px; transition: color 450ms ease; white-space: nowrap; line-height: 1; }
+    .block-view-toggle .view-mode-btn:hover, .block-view-toggle .view-mode-btn.is-active { background: linear-gradient(0deg,#A47CF3,#683FEA); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -2px 0 rgba(0, 0, 0, 0.2), 0 0 0 2px rgba(255, 255, 255, 0.15), 0 0 28px rgba(153, 23, 255, 0.55); transform: translateY(-1px); }
     .block-view-toggle .view-mode-btn:hover .view-mode-text, .block-view-toggle .view-mode-btn.is-active .view-mode-text { color: white; }
-    .block-view-toggle .view-mode-btn:hover .view-mode-sparkle, .block-view-toggle .view-mode-btn.is-active .view-mode-sparkle { fill: white; transform: scale(1.2); }
+    .block-view-toggle .view-mode-btn:hover .view-mode-sparkle, .block-view-toggle .view-mode-btn.is-active .view-mode-sparkle { fill: white; transform: scale(1.15); }
     .block-view-toggle .view-mode-btn:active { transform: translateY(0); }
     .block-minimap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px; background: #252528; border: 1px solid #333; border-radius: 12px; max-height: min(72vh, 680px); overflow-y: auto; }
     .block-minimap-item { position: relative; display: flex; flex-direction: column; width: 140px; min-height: 118px; flex-shrink: 0; border: 1px solid #444; border-radius: 8px; background: #1c1c1f; overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s, opacity 0.15s; user-select: none; cursor: grab; touch-action: none; }

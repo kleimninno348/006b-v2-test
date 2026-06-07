@@ -4,7 +4,12 @@ import {
   combineScopeWithSlugFilter,
   slugEqualsFilter,
 } from './filter'
+import {
+  getSiteThemeCode,
+  getSiteThemeConfigPageId,
+} from '@/src/lib/blog/siteTheme'
 import { getAll, queryDatabasePages } from './getDatabase'
+import { notion } from './notion'
 import { readRichTextPlain } from './readProperty'
 
 const THEME_CONFIG_SLUG = 'theme-config'
@@ -42,8 +47,26 @@ function filterPagesByType(
   )
 }
 
-/** 仅按 slug 查 theme-config，不受 status/type 范围限制（Widget 也能命中） */
+function readThemeExcerptFromPage(page: PageObjectResponse): string | null {
+  const excerpt = readRichTextPlain(page.properties['excerpt'])
+  return excerpt || null
+}
+
+/** Notion 兜底：优先 pages.retrieve（强一致），再 slug filter */
 async function fetchRemoteThemeFromNotion(): Promise<string | null> {
+  const knownPageId = await getSiteThemeConfigPageId()
+  if (knownPageId) {
+    try {
+      const page = (await notion.pages.retrieve({
+        page_id: knownPageId,
+      })) as PageObjectResponse
+      const excerpt = readThemeExcerptFromPage(page)
+      if (excerpt) return excerpt
+    } catch (error) {
+      console.warn('[fetchRemoteThemeFromNotion] pages.retrieve failed', error)
+    }
+  }
+
   try {
     const results = await queryDatabasePages(
       slugEqualsFilter(THEME_CONFIG_SLUG),
@@ -54,7 +77,7 @@ async function fetchRemoteThemeFromNotion(): Promise<string | null> {
         (p) => readRichTextPlain(p.properties['slug']) === THEME_CONFIG_SLUG
       ) ?? results[0]
     if (page) {
-      const excerpt = readRichTextPlain(page.properties['excerpt'])
+      const excerpt = readThemeExcerptFromPage(page)
       if (excerpt) return excerpt
     }
   } catch (error) {
@@ -66,7 +89,7 @@ async function fetchRemoteThemeFromNotion(): Promise<string | null> {
     findThemeConfigPage(filterPagesByType(objects, 'Widget')) ??
     findThemeConfigPage(objects)
   if (!themeConfigPage) return null
-  return readRichTextPlain(themeConfigPage.properties['excerpt']) || null
+  return readThemeExcerptFromPage(themeConfigPage)
 }
 
 /**
@@ -84,7 +107,11 @@ export const getRemoteTheme = async (): Promise<string | null> => {
   }
 
   if (!remoteThemeInflight) {
-    remoteThemeInflight = fetchRemoteThemeFromNotion()
+    remoteThemeInflight = (async () => {
+      const fromDb = await getSiteThemeCode()
+      if (fromDb) return fromDb
+      return fetchRemoteThemeFromNotion()
+    })()
       .then((value) => {
         if (persistAcrossCalls) remoteThemeCached = value
         return value

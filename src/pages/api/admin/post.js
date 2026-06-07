@@ -1,6 +1,7 @@
 import { Client } from '@notionhq/client';
 import { NotionToMarkdown } from 'notion-to-md';
 import { readPinnedFromNotionProperties } from '@/src/lib/blog/pinnedPosts';
+import { syncSiteThemeFromAdmin } from '@/src/lib/blog/siteTheme';
 
 const notion = new Client({
   auth: process.env.NOTION_KEY || process.env.NOTION_TOKEN,
@@ -396,6 +397,13 @@ export default async function handler(req, res) {
 
       if (id) {
         await withRetry(() => notion.pages.update({ page_id: id, properties: props }));
+        if (slug === 'theme-config' && excerpt !== undefined) {
+          try {
+            await syncSiteThemeFromAdmin(excerpt, id);
+          } catch (themeSyncErr) {
+            console.warn('theme-config Supabase 同步失败（Notion 已保存）', themeSyncErr);
+          }
+        }
         const shouldReplaceBody = useStructured || content !== undefined;
         if (shouldReplaceBody) {
             const children = await withRetry(() => notion.blocks.children.list({ block_id: id }));

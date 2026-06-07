@@ -151,6 +151,14 @@ $$;
 
 alter table public.post_stats enable row level security;
 
--- 3) 验证（结果应为 galleries / gallery_images / post_stats 三张空表）
+-- 博客主题即时读源（ISR 用，避免 Notion filter 索引延迟）
+create table if not exists public.blog_site_settings (
+  site_id uuid primary key,
+  theme_code text not null default 'v1',
+  theme_config_page_id text,
+  updated_at timestamptz not null default now()
+);
+
+-- 3) 验证（结果应为 galleries / gallery_images / post_stats / blog_site_settings）
 -- select table_name from information_schema.tables
 --   where table_schema = 'public' and table_name in ('galleries','gallery_images','post_stats');

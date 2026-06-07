@@ -190,25 +190,8 @@ async function runBatchedRevalidation(options = {}) {
   return { total, failed: failedCount, succeeded: done };
 }
 
-/** 主题切换：先单独刷壳层（与右上角刷新按钮相同），再分批刷最新文章内页 */
-async function runThemeRevalidation(onProgress) {
-  if (onProgress) {
-    onProgress({
-      step: 2,
-      totalSteps: 3,
-      label: '正在更新首页与列表页…',
-      done: 0,
-      total: 7,
-      hint: '优先刷新首页、归档与分类/标签',
-    });
-  }
-
-  const shellResult = await triggerContentRevalidation({
-    scope: 'shell',
-    clearCaches: true,
-    freshTheme: true,
-  });
-
+/** 主题切换：先刷内页，最后预热壳层（等 ISR 真正生成完 HTML 再结束） */
+async function runThemeRevalidation(onProgress, expectedTheme) {
   const postResult = await runBatchedRevalidation({
     freshTheme: true,
     listScope: 'theme-posts',
@@ -216,11 +199,30 @@ async function runThemeRevalidation(onProgress) {
     progressLabels: {
       listing: '正在统计最新文章内页…',
       running: '正在更新文章内页…',
-      doneOk: '主题切换完成',
-      donePartial: '主题已切换，部分内页需稍后自动更新',
-      hintOk: '首页、列表与最新文章内页已更新；更早文章内页随访问或 1 小时内更新',
+      doneOk: '正在更新首页与列表页…',
+      donePartial: '部分内页需稍后自动更新',
+      hintOk: '',
       hintPartial: '个内页未能及时更新，可打开该篇文章触发更新',
     },
+  });
+
+  if (onProgress) {
+    onProgress({
+      step: 2,
+      totalSteps: 3,
+      label: '正在更新首页与列表页…',
+      done: 0,
+      total: 7,
+      hint: '等待首页生成完成',
+    });
+  }
+
+  const shellResult = await triggerContentRevalidation({
+    scope: 'shell',
+    clearCaches: true,
+    freshTheme: true,
+    warmPaths: true,
+    expectedTheme: expectedTheme || null,
   });
 
   const shellFailed = shellResult.ok ? 0 : 1;
@@ -1971,7 +1973,7 @@ const [mounted, setMounted] = useState(false);
         console.warn('[handleThemeChange] theme-config read-back not confirmed, revalidating anyway');
       }
 
-      const refreshResult = await runThemeRevalidation(setThemeSwitchProgress);
+      const refreshResult = await runThemeRevalidation(setThemeSwitchProgress, version);
       await fetchPosts();
 
       openThemeDoneModal(
@@ -2471,7 +2473,7 @@ const [mounted, setMounted] = useState(false);
     showAdminToast('正在更新首页与列表页');
     if (silentRefreshRef.current) return;
     silentRefreshRef.current = true;
-    triggerContentRevalidation({ scope: 'shell', clearCaches: true, freshTheme: true })
+    triggerContentRevalidation({ scope: 'shell', clearCaches: true, freshTheme: true, warmPaths: true })
       .then((rev) => showRevalidateFeedback(rev, showAdminToast))
       .catch((e) => console.warn('列表页更新失败', e))
       .finally(() => { silentRefreshRef.current = false; });

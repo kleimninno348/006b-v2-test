@@ -9,6 +9,7 @@ import {
   collectShellRevalidatePaths,
   collectThemePostRevalidatePaths,
   revalidateMany,
+  resolveRevalidateOrigin,
 } from '@/src/lib/blog/contentRevalidation'
 
 export const config = {
@@ -39,6 +40,8 @@ export default async function handler(req, res) {
       paths: explicitPaths,
       clearCaches = true,
       freshTheme = false,
+      warmPaths = false,
+      expectedTheme = null,
     } = req.body ?? {}
 
     if (scope === 'list') {
@@ -96,6 +99,9 @@ export default async function handler(req, res) {
     const results = await revalidateMany(res, paths, {
       freshTheme,
       clearCaches: scope === 'batch' ? clearCaches : false,
+      warmPaths: Boolean(warmPaths),
+      origin: warmPaths ? resolveRevalidateOrigin(req) : undefined,
+      expectedTheme: expectedTheme || null,
     })
     const failed = results.filter((item) => !item.ok)
     const succeeded = results.filter((item) => item.ok)

@@ -1,5 +1,6 @@
-import type { NextApiResponse } from 'next'
+import type { NextApiRequest, NextApiResponse } from 'next'
 import CONFIG from '@/blog.config'
+import { resolveThemeId } from '@/src/themes/registry'
 import { clearGalleryAdBannerCache } from '@/src/lib/gallery/loadGalleryAdBanner'
 import { clearArchiveNavCache } from '@/src/lib/blog/archiveNavCache'
 import { getAllCategories } from '@/src/lib/blog/format/category'
@@ -49,6 +50,78 @@ function normalizePath(path: string): string {
   const trimmed = path.trim()
   if (!trimmed) return '/'
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/** 用于 revalidate 后主动请求页面，等待 ISR 再生完成（否则游客仍可能看到旧 HTML） */
+export function resolveRevalidateOrigin(
+  req?: Pick<NextApiRequest, 'headers'>
+): string {
+  const envUrl = process.env.BLOG_PUBLIC_URL?.trim()
+  if (envUrl) return envUrl.replace(/\/$/, '')
+
+  const host = req?.headers['x-forwarded-host'] || req?.headers.host
+  const proto = req?.headers['x-forwarded-proto'] || 'https'
+  if (typeof host === 'string' && host) {
+    return `${proto}://${host.split(',')[0].trim()}`
+  }
+
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+
+  return 'http://localhost:3000'
+}
+
+function htmlMatchesTheme(html: string, themeCode: string): boolean {
+  const themeId = resolveThemeId(themeCode)
+  const hasGalleryMarkup = html.includes('font-gallery')
+  return themeId === 'gallery' ? hasGalleryMarkup : !hasGalleryMarkup
+}
+
+async function warmRevalidatedPage(
+  origin: string,
+  path: string,
+  options?: { expectedTheme?: string | null }
+): Promise<void> {
+  const normalized = normalizePath(path)
+  const url = `${origin}${normalized}`
+  const expectedTheme = options?.expectedTheme?.trim()
+  const attempts = expectedTheme ? 4 : 1
+
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 60_000)
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+
+      if (!response.ok) {
+        console.warn(`[warmRevalidatedPage] ${url} status ${response.status}`)
+      } else if (expectedTheme && normalized === '/') {
+        const html = await response.text()
+        if (htmlMatchesTheme(html, expectedTheme)) {
+          return
+        }
+        console.warn(
+          `[warmRevalidatedPage] / theme mismatch on attempt ${i + 1}, expected ${expectedTheme}`
+        )
+      } else {
+        return
+      }
+    } catch (error) {
+      console.warn(`[warmRevalidatedPage] ${url} failed`, error)
+    }
+
+    if (i < attempts - 1) {
+      await sleep(1500)
+    }
+  }
 }
 
 function resolvePublicPagePath(slug: string): string {
@@ -265,12 +338,21 @@ export function collectPageRevalidatePaths(
 export async function revalidateMany(
   res: NextApiResponse,
   paths: string[],
-  options?: { freshTheme?: boolean; clearCaches?: boolean }
+  options?: {
+    freshTheme?: boolean
+    clearCaches?: boolean
+    warmPaths?: boolean
+    origin?: string
+    expectedTheme?: string | null
+  }
 ): Promise<RevalidateResult[]> {
   const unique = Array.from(new Set(paths.map(normalizePath)))
   const results: RevalidateResult[] = []
   const freshTheme = options?.freshTheme ?? false
   const clearCaches = options?.clearCaches ?? false
+  const warmPaths = options?.warmPaths ?? false
+  const origin = options?.origin
+  const expectedTheme = options?.expectedTheme ?? null
 
   if (clearCaches || freshTheme) {
     clearContentBuildCaches()
@@ -279,10 +361,23 @@ export async function revalidateMany(
     setRevalidateFreshTheme(true)
   }
 
+  const warmOrder = warmPaths
+    ? [...unique].sort((a, b) => {
+        if (a === '/') return -1
+        if (b === '/') return 1
+        return 0
+      })
+    : unique
+
   try {
-    for (const path of unique) {
+    for (const path of warmOrder) {
       try {
         await res.revalidate(path)
+        if (warmPaths && origin) {
+          await warmRevalidatedPage(origin, path, {
+            expectedTheme: path === '/' ? expectedTheme : null,
+          })
+        }
         results.push({ path, ok: true })
       } catch (error) {
         results.push({

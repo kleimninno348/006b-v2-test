@@ -76,6 +76,14 @@ export async function verifyAdminLoginToken(
       return { ok: false, reason: 'invalid aud' }
     }
 
+    const expectedSiteId = process.env.BLOG_SITE_ID?.trim()
+    const tokenSiteId = String(claims.site_id || '').trim()
+    if (expectedSiteId) {
+      if (!tokenSiteId || tokenSiteId !== expectedSiteId) {
+        return { ok: false, reason: 'invalid site_id' }
+      }
+    }
+
     return { ok: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

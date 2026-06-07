@@ -35,7 +35,7 @@ export default async function handler(
     return res.status(503).json({
       success: false,
       configured: false,
-      error: '统计未配置（需 Supabase 环境变量）',
+      error: '统计未配置（需 Supabase + BLOG_SITE_ID）',
     })
   }
 

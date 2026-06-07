@@ -66,7 +66,8 @@ Blog 侧通过 **Vercel env** 验签，**不**读取商户数据库。
 5. `purpose === "admin_login"`
 6. `aud === request Host`（小写）
 7. `sub === AUTH_USER`
-8. 设置 `internal_auth` Cookie，302 到 `/admin`（去掉 token）
+8. 若配置了 `BLOG_SITE_ID`：`site_id === BLOG_SITE_ID`
+9. 设置 `internal_auth` Cookie，302 到 `/admin`（去掉 token）
 
 实现：`src/middleware.ts`、`src/lib/admin/loginToken.ts`
 

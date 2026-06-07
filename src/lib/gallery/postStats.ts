@@ -1,9 +1,14 @@
-import { getSupabaseAdmin, isSupabaseGalleryConfigured } from '@/src/lib/supabase/admin'
-import { Post } from '@/src/types/blog'
+import {
+  getBlogSiteId,
+  getBlogSiteIdOrNull,
+  isGalleryTenantConfigured,
+} from '@/src/lib/gallery/blogSite'
 import {
   GalleryRecommendPost,
   GALLERY_RECOMMEND_COUNT,
 } from '@/src/lib/gallery/galleryRecommendations'
+import { getSupabaseAdmin } from '@/src/lib/supabase/admin'
+import { Post } from '@/src/types/blog'
 
 export type PostStatsSnapshot = {
   viewCount: number
@@ -17,14 +22,13 @@ export function isValidPostSlug(slug: string): boolean {
   return Boolean(s && s.length <= 200 && SLUG_RE.test(s))
 }
 
-/** 热度分：下载权重更高 */
 export function postPopularityScore(stats?: PostStatsSnapshot | null): number {
   if (!stats) return 0
   return Math.max(0, stats.viewCount) + Math.max(0, stats.downloadCount) * 3
 }
 
 export function isPostStatsConfigured(): boolean {
-  return isSupabaseGalleryConfigured()
+  return isGalleryTenantConfigured()
 }
 
 export async function getAllPostStatsMap(): Promise<
@@ -32,11 +36,12 @@ export async function getAllPostStatsMap(): Promise<
 > {
   const sb = getSupabaseAdmin()
   const map = new Map<string, PostStatsSnapshot>()
-  if (!sb) return map
-
+  const siteId = getBlogSiteIdOrNull()
+  if (!sb || !siteId) return map
   const { data, error } = await sb
     .from('post_stats')
     .select('post_slug, view_count, download_count')
+    .eq('site_id', siteId)
   if (error) {
     console.warn('[postStats] getAllPostStatsMap:', error.message)
     return map
@@ -54,11 +59,12 @@ export async function getAllPostStatsMap(): Promise<
 export async function getPostStats(slug: string): Promise<PostStatsSnapshot | null> {
   if (!isValidPostSlug(slug)) return null
   const sb = getSupabaseAdmin()
-  if (!sb) return null
-
+  const siteId = getBlogSiteIdOrNull()
+  if (!sb || !siteId) return null
   const { data, error } = await sb
     .from('post_stats')
     .select('view_count, download_count')
+    .eq('site_id', siteId)
     .eq('post_slug', slug.trim())
     .maybeSingle()
 
@@ -75,9 +81,10 @@ export async function incrementPostStat(
 ): Promise<boolean> {
   if (!isValidPostSlug(slug)) return false
   const sb = getSupabaseAdmin()
-  if (!sb) return false
-
+  const siteId = getBlogSiteIdOrNull()
+  if (!sb || !siteId) return false
   const { error } = await sb.rpc('increment_post_stat', {
+    p_site_id: siteId,
     p_slug: slug.trim(),
     p_field: field,
   })
@@ -98,7 +105,6 @@ function toRecommendPost(post: Post): GalleryRecommendPost {
   }
 }
 
-/** 全站热度 Top N（排除当前文章） */
 export function pickPopularRecommendations(
   current: Post,
   allPosts: Post[],

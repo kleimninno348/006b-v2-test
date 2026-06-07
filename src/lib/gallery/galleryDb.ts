@@ -1,5 +1,6 @@
-import { getSupabaseAdmin } from '@/src/lib/supabase/admin'
+import { getBlogSiteId, getBlogSiteIdOrNull } from '@/src/lib/gallery/blogSite'
 import { assertGalleryStorageQuota } from '@/src/lib/gallery/galleryStorage'
+import { getSupabaseAdmin } from '@/src/lib/supabase/admin'
 
 export type GalleryImageRow = {
   id: string
@@ -11,6 +12,7 @@ export type GalleryImageRow = {
 
 export type GalleryMeta = {
   id: string
+  site_id: string
   post_slug: string
   post_notion_id: string | null
   title: string | null
@@ -23,10 +25,12 @@ export async function getGalleryMetaBySlug(
   postSlug: string
 ): Promise<GalleryMeta | null> {
   const sb = getSupabaseAdmin()
-  if (!sb) return null
+  const siteId = getBlogSiteIdOrNull()
+  if (!sb || !siteId) return null
   const { data, error } = await sb
     .from('galleries')
-    .select('id, post_slug, post_notion_id, title, image_count')
+    .select('id, site_id, post_slug, post_notion_id, title, image_count')
+    .eq('site_id', siteId)
     .eq('post_slug', postSlug)
     .maybeSingle()
   if (error) throw error
@@ -77,9 +81,22 @@ export async function listGalleryImages(
     }
   }
 
+  const siteId = getBlogSiteIdOrNull()
+  if (!siteId) {
+    return {
+      meta,
+      images: [],
+      total: 0,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: 0,
+      hasMore: false,
+    }
+  }
   const { data, error, count } = await sb
     .from('gallery_images')
     .select('id, url, thumb_url, sort_order', { count: 'exact' })
+    .eq('site_id', siteId)
     .eq('gallery_id', meta.id)
     .order('sort_order', { ascending: true })
     .range(from, to)
@@ -107,11 +124,13 @@ export async function listAllGalleryImagesForAdmin(
   if (!meta) return { meta: null, images: [] }
 
   const sb = getSupabaseAdmin()
-  if (!sb) return { meta, images: [] }
+  const siteId = getBlogSiteIdOrNull()
+  if (!sb || !siteId) return { meta, images: [] }
 
   const { data, error } = await sb
     .from('gallery_images')
     .select('id, url, thumb_url, sort_order, file_size')
+    .eq('site_id', siteId)
     .eq('gallery_id', meta.id)
     .order('sort_order', { ascending: true })
 
@@ -134,6 +153,7 @@ export async function syncGalleryImages(input: {
     throw new Error('Supabase 未配置：请设置 NEXT_PUBLIC_SUPABASE_URL 与 SUPABASE_SERVICE_ROLE_KEY')
   }
 
+  const siteId = getBlogSiteId()
   const slug = input.postSlug.trim()
   if (!slug) throw new Error('post_slug 不能为空')
 
@@ -146,13 +166,14 @@ export async function syncGalleryImages(input: {
     .from('galleries')
     .upsert(
       {
+        site_id: siteId,
         post_slug: slug,
         post_notion_id: input.postNotionId || null,
         title: input.title || null,
       },
-      { onConflict: 'post_slug' }
+      { onConflict: 'site_id,post_slug' }
     )
-    .select('id, post_slug, post_notion_id, title, image_count')
+    .select('id, site_id, post_slug, post_notion_id, title, image_count')
     .single()
 
   if (upsertError) throw upsertError
@@ -162,6 +183,7 @@ export async function syncGalleryImages(input: {
   const { data: existingRows, error: existErr } = await sb
     .from('gallery_images')
     .select('url, file_size')
+    .eq('site_id', siteId)
     .eq('gallery_id', galleryId)
   if (existErr) throw existErr
 
@@ -172,12 +194,14 @@ export async function syncGalleryImages(input: {
   const { error: delError } = await sb
     .from('gallery_images')
     .delete()
+    .eq('site_id', siteId)
     .eq('gallery_id', galleryId)
   if (delError) throw delError
 
   const rows = (input.images || [])
     .map((img, index) => ({
       gallery_id: galleryId,
+      site_id: siteId,
       url: img.url,
       thumb_url: img.thumb_url || img.url,
       sort_order: index,
@@ -195,7 +219,8 @@ export async function syncGalleryImages(input: {
 
   const { data: refreshed, error: refError } = await sb
     .from('galleries')
-    .select('id, post_slug, post_notion_id, title, image_count')
+    .select('id, site_id, post_slug, post_notion_id, title, image_count')
+    .eq('site_id', siteId)
     .eq('id', galleryId)
     .single()
 

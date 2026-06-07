@@ -1,6 +1,4 @@
-import {
-  isSupabaseGalleryConfigured,
-} from '@/src/lib/supabase/admin'
+import { isGalleryTenantConfigured } from '@/src/lib/gallery/blogSite'
 import { listGalleryImages } from '@/src/lib/gallery/galleryDb'
 import type { NextApiRequest, NextApiResponse } from 'next'
 
@@ -13,7 +11,7 @@ export default async function handler(
     return res.status(405).json({ success: false, error: '仅支持 GET' })
   }
 
-  if (!isSupabaseGalleryConfigured()) {
+  if (!isGalleryTenantConfigured()) {
     return res.status(503).json({
       success: false,
       error: '图库服务未配置',

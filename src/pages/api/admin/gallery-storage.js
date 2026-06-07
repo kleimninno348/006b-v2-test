@@ -1,20 +1,18 @@
-import {
-  isSupabaseGalleryConfigured,
-} from '@/src/lib/supabase/admin'
+import { isGalleryTenantConfigured } from '@/src/lib/gallery/blogSite'
 import {
   canAddGalleryPendingBytes,
   formatGalleryStorageBytes,
+  getGalleryQuotaBytes,
   getGalleryStorageStats,
-  GALLERY_STORAGE_QUOTA_BYTES,
 } from '@/src/lib/gallery/galleryStorage'
 
 export default async function handler(req, res) {
-  if (!isSupabaseGalleryConfigured()) {
+  if (!isGalleryTenantConfigured()) {
     return res.status(503).json({
       success: false,
       configured: false,
       error:
-        '图库容量统计暂未启用，请联系管理员。',
+        '图库容量统计暂未启用（需 Supabase + BLOG_SITE_ID）。',
     })
   }
 
@@ -37,7 +35,7 @@ export default async function handler(req, res) {
       success: true,
       configured: true,
       ...stats,
-      quotaLabel: formatGalleryStorageBytes(GALLERY_STORAGE_QUOTA_BYTES),
+      quotaLabel: formatGalleryStorageBytes(getGalleryQuotaBytes()),
       usedLabel: formatGalleryStorageBytes(stats.usedBytes),
       remainingLabel: formatGalleryStorageBytes(stats.remainingBytes),
       canUpload: check ? check.ok : stats.remainingBytes > 0,

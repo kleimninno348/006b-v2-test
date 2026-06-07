@@ -1,13 +1,11 @@
-import {
-  isSupabaseGalleryConfigured,
-} from '@/src/lib/supabase/admin'
+import { isGalleryTenantConfigured } from '@/src/lib/gallery/blogSite'
 import {
   listAllGalleryImagesForAdmin,
   syncGalleryImages,
 } from '@/src/lib/gallery/galleryDb'
 
 export default async function handler(req, res) {
-  if (!isSupabaseGalleryConfigured()) {
+  if (!isGalleryTenantConfigured()) {
     return res.status(503).json({
       success: false,
       error:

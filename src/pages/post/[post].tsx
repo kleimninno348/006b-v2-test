@@ -79,19 +79,28 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
         false
       )
 
-      const navPosts = await getArchiveNavPosts()
+      let navPosts: Post[] = []
+      try {
+        navPosts = await getArchiveNavPosts()
+      } catch (navError) {
+        console.warn('Post page: archive nav load failed, continuing without nav', navError)
+      }
       const { previousPost, nextPost } = getNavigationInfo(navPosts, postForPage)
 
       const postStats = await getPostStats(slug)
       let recommendations: GalleryRecommendPost[] = []
       if (activeTheme === 'gallery') {
-        const statsMap = await getAllPostStatsMap()
-        recommendations = buildGalleryRecommendations(
-          postForPage,
-          navPosts,
-          undefined,
-          statsMap
-        )
+        try {
+          const statsMap = await getAllPostStatsMap()
+          recommendations = buildGalleryRecommendations(
+            postForPage,
+            navPosts,
+            undefined,
+            statsMap
+          )
+        } catch (recError) {
+          console.warn('Post page: gallery recommendations failed', recError)
+        }
       }
 
       const blocks = await getAllBlocks(postForPage.id)
@@ -132,7 +141,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
       if (isTransient) {
         throw error
       }
-      return { notFound: true }
+      throw error
     }
   }
 )

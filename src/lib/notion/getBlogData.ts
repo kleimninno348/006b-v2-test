@@ -44,11 +44,23 @@ function filterPagesByType(
 
 async function fetchRemoteThemeFromNotion(): Promise<string | null> {
   const scopes: ApiScope[] = [
-    ApiScope.Archive,
-    ApiScope.Draft,
     ApiScope.Home,
+    ApiScope.Archive,
     ApiScope.Page,
+    ApiScope.Draft,
   ]
+
+  for (const scope of scopes) {
+    const filter = combineScopeWithFilter(
+      scope,
+      slugEqualsFilter(THEME_CONFIG_SLUG)
+    )
+    const results = await queryDatabasePages(filter, { pageSize: 5 })
+    for (const page of results) {
+      const excerpt = readRichTextPlain(page.properties['excerpt'])
+      if (excerpt) return excerpt
+    }
+  }
 
   for (const scope of scopes) {
     const objects = await getAll(scope)
@@ -61,13 +73,19 @@ async function fetchRemoteThemeFromNotion(): Promise<string | null> {
       }
     } else if (scope === ApiScope.Home) {
       themeConfigPage = findThemeConfigPage(filterPagesByType(objects, 'Widget'))
+      if (!themeConfigPage) {
+        themeConfigPage = findThemeConfigPage(objects)
+      }
     } else {
       themeConfigPage = findThemeConfigPage(filterPagesByType(objects, 'Post'))
+      if (!themeConfigPage) {
+        themeConfigPage = findThemeConfigPage(objects)
+      }
     }
 
     if (themeConfigPage) {
       const excerpt = readRichTextPlain(themeConfigPage.properties['excerpt'])
-      return excerpt || null
+      if (excerpt) return excerpt
     }
   }
 
@@ -147,14 +165,38 @@ function pickPostBySlugResults(
   return null
 }
 
-/** 按 slug 查单篇（Archive / Draft），Notion filter 命中，不拉全库 */
+function findPostPageBySlugInList(
+  objects: PageObjectResponse[],
+  slug: string
+): PageObjectResponse | undefined {
+  const trimmed = slug.trim()
+  return objects.find(
+    (object) => readRichTextPlain(object.properties['slug']) === trimmed
+  )
+}
+
+/** 按 slug 查单篇（Archive / Draft）；Notion filter 未命中时回退内存匹配 */
 export async function getPostBySlug(
   slug: string,
   scope: ApiScope.Archive | ApiScope.Draft
 ): Promise<PageObjectResponse | null> {
-  const filter = combineScopeWithFilter(scope, slugEqualsFilter(slug))
+  const trimmed = slug.trim()
+  if (!trimmed) return null
+
+  const filter = combineScopeWithFilter(scope, slugEqualsFilter(trimmed))
   const results = await queryDatabasePages(filter, { pageSize: 5 })
-  return pickPostBySlugResults(results, scope)
+  const picked = pickPostBySlugResults(results, scope)
+  if (picked) return picked
+
+  const objects = await getAll(scope)
+  const fallback = findPostPageBySlugInList(objects, trimmed)
+  if (!fallback) {
+    console.warn(
+      `[getPostBySlug] slug filter miss, not found in scope ${scope}: ${trimmed}`
+    )
+    return null
+  }
+  return pickPostBySlugResults([fallback], scope)
 }
 
 export const getPageBySlug = async (slug: string) => {

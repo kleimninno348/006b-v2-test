@@ -46,6 +46,8 @@ export default async function handler(req, res) {
         paths = await collectAllRevalidatePaths()
       } else if (listScope === 'shell') {
         paths = collectShellRevalidatePaths()
+      } else if (listScope === 'theme') {
+        paths = await collectGalleryAdRevalidatePaths()
       }
       return res.status(200).json({
         success: true,

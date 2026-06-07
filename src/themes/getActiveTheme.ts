@@ -20,13 +20,18 @@ export async function resolveActiveTheme(
 ): Promise<ThemeId> {
   const fallbackId = fallback
     ? resolveThemeId(String(fallback))
-    : themeFromEnv() ?? DEFAULT_THEME
+    : DEFAULT_THEME
 
   try {
     const code = await getRemoteTheme()
     if (code) return resolveThemeId(code)
   } catch (e) {
     console.error('resolveActiveTheme: getRemoteTheme failed', e)
+  }
+
+  const envTheme = themeFromEnv()
+  if (envTheme) {
+    return envTheme
   }
 
   return fallbackId

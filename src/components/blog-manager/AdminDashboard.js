@@ -190,17 +190,17 @@ async function runBatchedRevalidation(options = {}) {
   return { total, failed: failedCount, succeeded: done };
 }
 
-/** 主题切换：刷新壳层列表页（文章内页随访问按需更新） */
+/** 主题切换：壳层 + 首页最新一批文章内页（freshTheme 强制读 Notion theme-config） */
 async function runThemeRevalidation(onProgress) {
   return runBatchedRevalidation({
     freshTheme: true,
-    listScope: 'shell',
+    listScope: 'theme',
     onProgress,
     progressLabels: {
       doneOk: '主题切换完成',
-      donePartial: '主题已切换，部分列表页需稍后自动更新',
-      hintOk: '首页与列表已更新；文章内页将在 1 小时内逐步完成',
-      hintPartial: '个列表页未能及时更新，可稍后重试或打开单篇文章查看',
+      donePartial: '主题已切换，部分页面需稍后自动更新',
+      hintOk: '首页、列表与最新文章内页已更新；更早文章内页随访问或 1 小时内更新',
+      hintPartial: '个页面未能及时更新，可稍后重试或打开单篇文章查看',
     },
   });
 }

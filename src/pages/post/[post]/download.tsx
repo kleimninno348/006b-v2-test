@@ -117,7 +117,7 @@ export const getStaticProps: GetStaticProps = withNavFooterStaticProps(
       if (isTransient) {
         throw error
       }
-      return { notFound: true }
+      throw error
     }
   }
 )

@@ -16,20 +16,29 @@ import {
   AdminFaviconLinks,
   GalleryFaviconLinks,
 } from '@/src/themes/gallery/GalleryFaviconLinks'
-import { ThemeSyncGuard } from '@/src/components/theme/ThemeSyncGuard'
+import {
+  ActiveThemeProvider,
+  useActiveTheme,
+} from '@/src/components/theme/ActiveThemeProvider'
 import { NextPageWithLayout } from '../types/blog'
 
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout
 }
 
-function BlogApp({ Component, pageProps, router }: AppPropsWithLayout) {
-  console.log(pageProps,"-----------pageProps----------")
-  const activeTheme = (pageProps as { activeTheme?: string })?.activeTheme
+function BlogAppShell({ Component, pageProps, router }: AppPropsWithLayout) {
+  const staticTheme = (pageProps as { activeTheme?: string })?.activeTheme
+  const liveTheme = useActiveTheme()
+  const activeTheme = liveTheme || staticTheme
   const isAdminRoute =
     router.pathname === '/admin' || router.pathname.startsWith('/admin/')
   const getLayout =
     Component.getLayout ?? ((page) => <BlogLayout>{page}</BlogLayout>)
+
+  const effectivePageProps = {
+    ...pageProps,
+    activeTheme,
+  }
 
   useEffect(() => {
     AOS.init({
@@ -174,8 +183,7 @@ function BlogApp({ Component, pageProps, router }: AppPropsWithLayout) {
         options={{ showSpinner: false }}
       />
       <GoogleAnalytics trackPageViews />
-      <ThemeSyncGuard activeTheme={activeTheme} isAdminRoute={isAdminRoute} />
-      {getLayout(<Component {...pageProps} />)}
+      {getLayout(<Component {...effectivePageProps} />)}
       <Analytics />
     </ThemeProvider>
     </>
@@ -190,6 +198,22 @@ export function reportWebVitals(metric: NextWebVitalsMetric) {
     label: id,
     nonInteraction: true,
   })
+}
+
+function BlogApp(props: AppPropsWithLayout) {
+  const staticTheme = (props.pageProps as { activeTheme?: string })?.activeTheme
+  const isAdminRoute =
+    props.router.pathname === '/admin' ||
+    props.router.pathname.startsWith('/admin/')
+
+  return (
+    <ActiveThemeProvider
+      initialTheme={staticTheme}
+      isAdminRoute={isAdminRoute}
+    >
+      <BlogAppShell {...props} />
+    </ActiveThemeProvider>
+  )
 }
 
 export default BlogApp
